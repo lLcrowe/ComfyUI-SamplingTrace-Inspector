@@ -6,7 +6,7 @@
 
 ## 작업 목표
 
-제공된 `ComfyUI-Trace-Inspector` 구현을 현재 로컬 ComfyUI 설치본에 장착하고, Phase 0~7을 순서대로 검증·수정해 주세요.
+제공된 `ComfyUI-SamplingTrace-Inspector` 구현을 현재 로컬 ComfyUI 설치본에 장착하고, Phase 0~7을 순서대로 검증·수정해 주세요.
 
 이 도구의 목적은 ComfyUI Preview (중간 미리보기)를 step별로 저장하고, 같은 step의 Latent (잠재 표현), x0, Sigma, CFG delta, ControlNet residual, 노드 실행 Timeline을 연결해서 사용자가 다음 파라미터 조절 근거를 얻도록 하는 것입니다.
 
@@ -39,7 +39,7 @@
 
 ## 작업 대상
 
-- 제공된 `ComfyUI-Trace-Inspector` 폴더
+- 제공된 `ComfyUI-SamplingTrace-Inspector` 폴더
 - 실제 ComfyUI 설치본의 호환성 확인
 - Inventory에서 선정된 Priority A package의 Trace Adapter
 
@@ -99,7 +99,7 @@ python scripts/comfy_integration_smoke.py
 - import error 없음
 - route duplicate 없음
 - `Trace Model` 검색 가능
-- `Trace Inspector` bottom panel 표시
+- `SamplingTrace Inspector` bottom panel 표시
 - browser console error 없음
 
 ## 4. 최소 workflow 검증

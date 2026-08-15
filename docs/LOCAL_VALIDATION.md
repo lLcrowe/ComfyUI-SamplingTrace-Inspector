@@ -100,7 +100,7 @@ Conditions: WAI Illustrious v17, 512×512, Euler/normal, 8 steps, CFG 5.0, warmu
 
 ## Packaged internal acceptance — 2026-08-15 PASS
 
-- 별도 ComfyUI root·user/output/input/temp·port `8891`, Trace Inspector만 allowlist로 로드
+- 별도 ComfyUI root·user/output/input/temp·port `8891`, SamplingTrace Inspector만 allowlist로 로드
 - health·노드 8/8·웹 자산, checksum 75/75, static check, pytest 48 passed
 - health route와 새 실제 Run의 `pluginVersion` 모두 `0.4.0b1`
 - Off·Basic·Advanced standard·Advanced influence decoded RGBA 동일

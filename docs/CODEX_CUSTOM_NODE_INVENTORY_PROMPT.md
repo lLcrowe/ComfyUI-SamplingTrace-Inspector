@@ -6,7 +6,7 @@
 
 ## 목표
 
-`ComfyUI-Trace-Inspector`를 실제 workflow에 장착하기 전에, 현재 설치된 `custom_nodes` 전체를 **비실행 정적 조사**하고 Trace 호환성 및 Adapter 우선순위를 확정하세요.
+`ComfyUI-SamplingTrace-Inspector`를 실제 workflow에 장착하기 전에, 현재 설치된 `custom_nodes` 전체를 **비실행 정적 조사**하고 Trace 호환성 및 Adapter 우선순위를 확정하세요.
 
 ## 절대 금지
 
@@ -23,7 +23,7 @@
 
 ## 먼저 실행
 
-Trace Inspector 폴더에서:
+SamplingTrace Inspector 폴더에서:
 
 ```bash
 python scripts/scan_custom_nodes.py \

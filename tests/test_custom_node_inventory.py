@@ -129,7 +129,7 @@ def test_previous_inventory_diff_uses_source_fingerprint(tmp_path: Path) -> None
 
 def test_excludes_trace_inspector_itself_by_default(tmp_path: Path) -> None:
     custom_nodes = tmp_path / "custom_nodes"
-    _write(custom_nodes / "ComfyUI-Trace-Inspector" / "__init__.py", "NODE_CLASS_MAPPINGS = {}\n")
+    _write(custom_nodes / "ComfyUI-SamplingTrace-Inspector" / "__init__.py", "NODE_CLASS_MAPPINGS = {}\n")
     _write(custom_nodes / "Other" / "__init__.py", "NODE_CLASS_MAPPINGS = {}\n")
 
     default_inventory = scan_custom_nodes(custom_nodes)
@@ -137,7 +137,7 @@ def test_excludes_trace_inspector_itself_by_default(tmp_path: Path) -> None:
 
     assert [item["folder_name"] for item in default_inventory["packages"]] == ["Other"]
     assert {item["folder_name"] for item in included_inventory["packages"]} == {
-        "ComfyUI-Trace-Inspector",
+        "ComfyUI-SamplingTrace-Inspector",
         "Other",
     }
 

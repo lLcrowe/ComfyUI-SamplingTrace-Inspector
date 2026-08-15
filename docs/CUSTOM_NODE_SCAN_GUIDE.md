@@ -50,7 +50,7 @@
 ### ComfyUI 일반 설치
 
 ```bash
-cd ComfyUI/custom_nodes/ComfyUI-Trace-Inspector
+cd ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector
 python scripts/scan_custom_nodes.py \
   --comfy-root "C:\\Path\\To\\ComfyUI" \
   --output-dir docs
@@ -59,7 +59,7 @@ python scripts/scan_custom_nodes.py \
 ### ComfyUI Windows Portable
 
 ```powershell
-cd C:\Path\To\ComfyUI_windows_portable\ComfyUI\custom_nodes\ComfyUI-Trace-Inspector
+cd C:\Path\To\ComfyUI_windows_portable\ComfyUI\custom_nodes\ComfyUI-SamplingTrace-Inspector
 .\scripts\scan_custom_nodes.ps1 \
   -ComfyRoot "C:\Path\To\ComfyUI_windows_portable" \
   -OutputDir ".\docs"

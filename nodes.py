@@ -71,7 +71,7 @@ class ComfyTraceModel:
     RETURN_TYPES = ("MODEL", "TRACE_SESSION")
     RETURN_NAMES = ("model", "trace_session")
     FUNCTION = "attach"
-    CATEGORY = "Trace Inspector"
+    CATEGORY = "SamplingTrace Inspector"
     DESCRIPTION = (
         "Attach Preview (중간 미리보기), Latent (잠재 표현), CFG, and ControlNet tracing "
         "to a cloned MODEL without replacing KSampler."
@@ -142,7 +142,7 @@ class ComfyTraceExport:
     RETURN_NAMES = ("report_directory",)
     FUNCTION = "export"
     OUTPUT_NODE = True
-    CATEGORY = "Trace Inspector"
+    CATEGORY = "SamplingTrace Inspector"
 
     def export(self, trace_session: TraceSession, status: str):
         trace_session.finalize(status=status)
@@ -165,7 +165,7 @@ class ComfyTraceNote:
     RETURN_TYPES = ("TRACE_SESSION",)
     RETURN_NAMES = ("trace_session",)
     FUNCTION = "add_note"
-    CATEGORY = "Trace Inspector"
+    CATEGORY = "SamplingTrace Inspector"
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
@@ -187,7 +187,7 @@ class _ProbeBase:
     RETURN_TYPES: tuple[str, ...] = ()
     RETURN_NAMES: tuple[str, ...] = ()
     FUNCTION = "probe"
-    CATEGORY = "Trace Inspector/Probes"
+    CATEGORY = "SamplingTrace Inspector/Probes"
 
     @classmethod
     def optional_inputs(cls):
@@ -338,12 +338,12 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ComfyTraceModel": "Trace Model (Sampling Inspector)",
-    "ComfyTraceExport": "Trace Export / Finalize",
-    "ComfyTraceNote": "Trace Note",
-    "ComfyTraceImage": "Trace Image",
-    "ComfyTraceLatent": "Trace Latent",
-    "ComfyTraceMask": "Trace Mask",
-    "ComfyTraceConditioning": "Trace Conditioning",
-    "ComfyTraceModelSnapshot": "Trace Model Snapshot",
+    "ComfyTraceModel": "SamplingTrace Model",
+    "ComfyTraceExport": "SamplingTrace Export / Finalize",
+    "ComfyTraceNote": "SamplingTrace Note",
+    "ComfyTraceImage": "SamplingTrace Image",
+    "ComfyTraceLatent": "SamplingTrace Latent",
+    "ComfyTraceMask": "SamplingTrace Mask",
+    "ComfyTraceConditioning": "SamplingTrace Conditioning",
+    "ComfyTraceModelSnapshot": "SamplingTrace Model Snapshot",
 }

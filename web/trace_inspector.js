@@ -98,7 +98,7 @@ async function flushEvents(completionType = null, completionDetail = null) {
       });
     } catch (error) {
       failures += 1;
-      console.warn(`[Trace Inspector] Failed to persist frontend events for ${runId}`, error);
+      console.warn(`[SamplingTrace Inspector] Failed to persist frontend events for ${runId}`, error);
     }
   }
   if (failures === runIds.length) state.pendingEvents.unshift(...events.slice(-1000));
@@ -395,7 +395,7 @@ function imageUrl(path) {
 }
 
 function setPanelError(error) {
-  console.error("[Trace Inspector]", error);
+  console.error("[SamplingTrace Inspector]", error);
   const status = state.root?.querySelector("[data-role='status']");
   if (status) status.textContent = `Error: ${error.message || error}`;
 }
@@ -424,8 +424,8 @@ function updateExpandedButton() {
   if (!toggle) return;
   toggle.textContent = state.expanded ? "Back to panel" : "Expand";
   toggle.title = state.expanded
-    ? "Return Trace Inspector to the ComfyUI bottom panel (Esc)"
-    : "Open Trace Inspector in a large workspace";
+    ? "Return SamplingTrace Inspector to the ComfyUI bottom panel (Esc)"
+    : "Open SamplingTrace Inspector in a large workspace";
   toggle.setAttribute("aria-pressed", String(state.expanded));
 }
 
@@ -453,7 +453,7 @@ function setExpanded(expanded, persist = true) {
 function createToolbar() {
   const bar = el("div", "cti-toolbar");
   const brand = el("div", "cti-brand");
-  brand.append(el("strong", "cti-title", "Trace Inspector"), el("span", "cti-brand-subtitle", "Sampling debugger"));
+  brand.append(el("strong", "cti-title", "SamplingTrace Inspector"), el("span", "cti-brand-subtitle", "Sampling analyzer"));
   bar.append(
     brand,
     button("Refresh", async () => {
@@ -1193,7 +1193,7 @@ app.registerExtension({
   bottomPanelTabs: [
     {
       id: "comfy-trace-inspector",
-      title: "Trace Inspector",
+      title: "SamplingTrace Inspector",
       type: "custom",
       targetPanel: "terminal",
       render: createPanel,

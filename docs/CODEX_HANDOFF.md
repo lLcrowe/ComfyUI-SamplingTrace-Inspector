@@ -1,4 +1,4 @@
-# Codex Handoff — ComfyUI Trace Inspector
+# Codex Handoff — ComfyUI SamplingTrace Inspector
 
 ## 1. 인계 목표
 
@@ -44,7 +44,7 @@ Codex의 역할은 새로 설계하는 것이 아니라, **먼저 실제 설치�
 ### 주 수정 대상
 
 ```text
-ComfyUI/custom_nodes/ComfyUI-Trace-Inspector/
+ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector/
 ```
 
 ### 건드리지 말 것
@@ -100,7 +100,7 @@ Installed custom nodes relevant to tests
 ### Step B — 정적 확인
 
 ```bash
-cd ComfyUI/custom_nodes/ComfyUI-Trace-Inspector
+cd ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector
 python scripts/static_check.py
 pytest -q
 python scripts/comfy_integration_smoke.py
@@ -112,7 +112,7 @@ python scripts/comfy_integration_smoke.py
 - import error 없음
 - route duplicate 없음
 - `Trace Model` 노드 검색 가능
-- `Trace Inspector` bottom panel 표시
+- `SamplingTrace Inspector` bottom panel 표시
 - browser console error 없음
 
 ### Step D — 가장 작은 workflow

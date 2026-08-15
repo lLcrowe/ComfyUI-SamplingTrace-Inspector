@@ -1,4 +1,4 @@
-# ComfyUI Trace Inspector
+# ComfyUI SamplingTrace Inspector
 
 ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **노드 실행 흐름**, **Sampling Step (샘플링 단계)**, **Latent (잠재 표현 / 압축된 이미지 정보)**, **x0 (현재 예상 완성 Latent)**, **Sigma (현재 노이즈 강도)**, **CFG (조건 반영 강도)**, **ControlNet residual (제어 잔차)**을 한 타임라인에서 관찰하는 커스텀 노드 패키지입니다.
 
@@ -17,7 +17,7 @@ ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **
   → 다시 생성
 ```
 
-Trace Inspector는 이를 다음처럼 바꿉니다.
+SamplingTrace Inspector는 이를 다음처럼 바꿉니다.
 
 ```text
 Step Preview 관찰
@@ -105,19 +105,19 @@ docs/LOCAL_ADAPTER_PLAN.md
 1. 비공개 베타 참여자는 GitHub 인증 후 다음 위치에 clone합니다. ZIP을 받은 경우에도 같은 폴더명이 되도록 압축을 풉니다.
 
 ```bash
-git clone https://github.com/lLcrowe/ComfyUI-Trace-Inspector.git ComfyUI/custom_nodes/ComfyUI-Trace-Inspector
+git clone https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector.git ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector
 ```
 
 최종 설치 위치:
 
 ```text
-ComfyUI/custom_nodes/ComfyUI-Trace-Inspector/
+ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector/
 ```
 
 2. ComfyUI Python 환경에서 선택적으로 확인합니다.
 
 ```bash
-cd ComfyUI/custom_nodes/ComfyUI-Trace-Inspector
+cd ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector
 python scripts/static_check.py
 ```
 
@@ -138,7 +138,7 @@ Trace Note
 
 5. 최종 MODEL patch 뒤, KSampler 앞에 `Trace Model`을 연결합니다.
 
-6. ComfyUI 하단의 `Trace Inspector` 패널을 엽니다.
+6. ComfyUI 하단의 `SamplingTrace Inspector` 패널을 엽니다.
 
 ---
 
@@ -377,4 +377,4 @@ python scripts/comfy_integration_smoke.py
 
 ## 15. 비공개 베타 피드백
 
-재현 가능한 오류·호환성 문제·사용 중 막힌 지점은 [GitHub Issues](https://github.com/lLcrowe/ComfyUI-Trace-Inspector/issues)에 남깁니다. 모델 파일, 개인 workflow 원본, 생성 이미지처럼 공개하면 안 되는 자료는 Issue에 첨부하지 말고 재현 가능한 최소 조건만 기록합니다.
+재현 가능한 오류·호환성 문제·사용 중 막힌 지점은 [GitHub Issues](https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector/issues)에 남깁니다. 모델 파일, 개인 workflow 원본, 생성 이미지처럼 공개하면 안 되는 자료는 Issue에 첨부하지 말고 재현 가능한 최소 조건만 기록합니다.

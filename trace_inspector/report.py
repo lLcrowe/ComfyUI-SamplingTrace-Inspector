@@ -55,7 +55,7 @@ def render_markdown(run: dict[str, Any], steps: list[dict[str, Any]]) -> str:
     options = run.get("options", {}) or {}
     settings = run.get("generationSettings", {}) or {}
     lines = [
-        "# ComfyUI Trace Inspector Report",
+        "# ComfyUI SamplingTrace Inspector Report",
         "",
         "## Run",
         "",
@@ -187,7 +187,7 @@ th{{position:sticky;top:0;background:#202020}}img{{max-width:180px;max-height:12
 </style>
 </head>
 <body>
-<h1>ComfyUI Trace Inspector Report</h1>
+<h1>ComfyUI SamplingTrace Inspector Report</h1>
 <p><b>Run:</b> <code>{html.escape(str(run.get('runId', '')))}</code><br>
 <b>Prompt:</b> <code>{html.escape(str(run.get('promptId') or '—'))}</code><br>
 <b>Status:</b> {html.escape(str(run.get('status', '')))}<br>
@@ -241,7 +241,7 @@ def render_comparison_markdown(comparison: dict[str, Any]) -> str:
     workflow = comparison.get("workflow", {}) or {}
     runtime = comparison.get("runtime", {}) or {}
     lines = [
-        "# ComfyUI Trace Inspector A/B Report",
+        "# ComfyUI SamplingTrace Inspector A/B Report",
         "",
         "## Runs",
         "",
@@ -323,7 +323,7 @@ def render_comparison_html(comparison: dict[str, Any]) -> str:
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ComfyUI Trace A/B {html.escape(left_id)} vs {html.escape(right_id)}</title>
 <style>body{{font:14px/1.5 system-ui,sans-serif;margin:24px;background:#111;color:#ddd}}code,pre{{font-family:ui-monospace,monospace}}pre{{background:#1b1b1b;padding:12px;overflow:auto}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #333;padding:6px;text-align:left}}th{{position:sticky;top:0;background:#202020}}img{{max-width:150px;max-height:110px}}.small{{color:#aaa}}</style>
-</head><body><h1>ComfyUI Trace Inspector A/B Report</h1>
+</head><body><h1>ComfyUI SamplingTrace Inspector A/B Report</h1>
 <table><thead><tr><th>Side</th><th>Run</th><th>Prompt</th><th>Label</th><th>Workflow hash</th><th>Requested sampler</th><th>Actual sampler</th><th>Steps</th></tr></thead><tbody>
 <tr><td>A</td><td><code>{html.escape(left_id)}</code></td><td><code>{html.escape(str(left.get('promptId') or '—'))}</code></td><td>{html.escape(str(left.get('label') or '—'))}</td><td><code>{html.escape(str(workflow.get('leftHash', '')))}</code></td><td>{html.escape(str(left_runtime.get('requestedSampler', '')))}</td><td>{html.escape(str(left_runtime.get('actualSampler', '')))}</td><td>{comparison.get('leftStepCount', 0)}</td></tr>
 <tr><td>B</td><td><code>{html.escape(right_id)}</code></td><td><code>{html.escape(str(right.get('promptId') or '—'))}</code></td><td>{html.escape(str(right.get('label') or '—'))}</td><td><code>{html.escape(str(workflow.get('rightHash', '')))}</code></td><td>{html.escape(str(right_runtime.get('requestedSampler', '')))}</td><td>{html.escape(str(right_runtime.get('actualSampler', '')))}</td><td>{comparison.get('rightStepCount', 0)}</td></tr>

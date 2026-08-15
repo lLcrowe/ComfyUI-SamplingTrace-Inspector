@@ -1,4 +1,4 @@
-# ComfyUI Trace Inspector — Phase 0~7
+# ComfyUI SamplingTrace Inspector — Phase 0~7
 
 ## 전체 요약
 

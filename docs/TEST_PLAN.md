@@ -1,4 +1,4 @@
-# ComfyUI Trace Inspector — Test Plan
+# ComfyUI SamplingTrace Inspector — Test Plan
 
 ## 1. 테스트 원칙
 
@@ -54,7 +54,7 @@ ComfyUI 시작 후:
 
 ### 통과 조건
 - `Trace Model` 검색 가능
-- `Trace Inspector` panel 표시
+- `SamplingTrace Inspector` panel 표시
 - route `/trace-inspector/health`가 `ok=true`
 
 ---

@@ -1,4 +1,4 @@
-# ComfyUI Trace Inspector — Architecture
+# ComfyUI SamplingTrace Inspector — Architecture
 
 ## 1. 핵심 판단
 

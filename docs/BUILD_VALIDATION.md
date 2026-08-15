@@ -78,7 +78,7 @@ Trace priority: P1 3 / P2 6 / P3 12 / P5 15
 - Priority A/B/C와 adapter 필요도 판정
 - Inventory JSON/Markdown, compatibility matrix, adapter priority, local adapter plan 생성
 - 일반 ComfyUI root / Windows Portable root / direct custom_nodes 경로 해석
-- Trace Inspector 자체 package 기본 제외
+- SamplingTrace Inspector 자체 package 기본 제외
 
 ### Workflow Usage Inventory
 
@@ -158,7 +158,7 @@ Trace priority: P1 3 / P2 6 / P3 12 / P5 15
 
 ## Packaged-build internal acceptance
 
-비공개 저장소의 패키지를 추적 대상 외부의 새 ComfyUI clone에 설치하고, 별도 user/output/input/temp 디렉터리와 포트 `8891`에서 검사했습니다. 임베디드 Python의 기존 ComfyUI 경로가 섞인 첫 두 부팅은 격리 증거에서 폐기했고, `--base-directory`와 Custom Node allowlist로 Trace Inspector만 로드된 세 번째 부팅부터 채택했습니다.
+비공개 저장소의 패키지를 추적 대상 외부의 새 ComfyUI clone에 설치하고, 별도 user/output/input/temp 디렉터리와 포트 `8891`에서 검사했습니다. 임베디드 Python의 기존 ComfyUI 경로가 섞인 첫 두 부팅은 격리 증거에서 폐기했고, `--base-directory`와 Custom Node allowlist로 SamplingTrace Inspector만 로드된 세 번째 부팅부터 채택했습니다.
 
 - package source: private repository fresh clone; plugin-only Custom Node import
 - boot: health route, 8/8 Trace nodes, JavaScript/CSS assets HTTP 200
@@ -169,7 +169,7 @@ Trace priority: P1 3 / P2 6 / P3 12 / P5 15
 - callback/frontend: Trace step persisted before original progress `8/8`; browser-linked Run stored 18 frontend events and completed as `success`
 - UI: Runs/Preview/Workflow/Visual A/B rendered; step 1/8 selection and A/B pair interaction PASS; vertical body scroll `662 → 1292`, `overflow-y: scroll`
 - storage/API: note create/edit/delete, UI note add, 8-step compare, Markdown/HTML HTTP 200, expected 400/404 responses, isolated Run deletion PASS
-- restart: 5 Runs, 8 steps, 18 frontend events, base reports and A/B reports restored; UI reloaded without Trace Inspector console errors
+- restart: 5 Runs, 8 steps, 18 frontend events, base reports and A/B reports restored; UI reloaded without SamplingTrace Inspector console errors
 - regressions found and fixed: `benchmark_live.py` assumed `<ComfyUI>/output`; `--output-root` now covers custom output directories. Health and persisted Runs also used stale `0.2.0`; both now share the `0.4.0b1` package version constant.
 
 The isolated server was stopped after verification. The original ComfyUI process and queue remained unchanged at `0/0`.

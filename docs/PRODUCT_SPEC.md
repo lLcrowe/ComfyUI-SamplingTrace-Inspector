@@ -1,4 +1,4 @@
-# ComfyUI Trace Inspector — Product Specification
+# ComfyUI SamplingTrace Inspector — Product Specification
 
 ## 1. 한 줄 정의
 

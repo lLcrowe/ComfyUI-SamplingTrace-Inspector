@@ -189,7 +189,7 @@ A/B 실험 자동 생성
 
 ## 15. 네트워크 노출과 접근 경계
 
-Trace Inspector의 REST route와 Preview/report 파일은 ComfyUI 서버와 같은 접근 경계를 사용합니다.
+SamplingTrace Inspector의 REST route와 Preview/report 파일은 ComfyUI 서버와 같은 접근 경계를 사용합니다.
 
 따라서 ComfyUI를 `--listen 0.0.0.0`으로 외부 네트워크에 열면 다음 데이터도 접근 대상이 될 수 있습니다.
 
