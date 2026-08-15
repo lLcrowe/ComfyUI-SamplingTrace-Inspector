@@ -110,7 +110,6 @@ Conditions: WAI Illustrious v17, 512×512, Euler/normal, 8 steps, CFG 5.0, warmu
 
 - Clean ComfyUI installation outside this machine
 - External first-user Quick Start completion
-- Actual repository/support URLs in release metadata
 
 ### Cosmetic
 
@@ -122,4 +121,4 @@ Conditions: WAI Illustrious v17, 512×512, Euler/normal, 8 steps, CFG 5.0, warmu
 - Structured: Yes
 - Established: Static inventory + workflow usage + live Plugin/panel + KSampler identity + Depth/OpenPose ControlNet + P1 Adapter 3종 + A/B reports + concurrent prompt linkage
 - Local integration ready: Yes
-- Public beta ready: No — clean install, real repository/support URLs, and an external first-user pass remain
+- Public beta ready: No — clean install and an external first-user pass remain

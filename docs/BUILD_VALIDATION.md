@@ -160,8 +160,7 @@ Trace priority: P1 3 / P2 6 / P3 12 / P5 15
 
 1. 이 작업 머신 밖의 clean ComfyUI 설치·제거·재설치
 2. 외부 첫 사용자 1명의 README Quick Start 완주
-3. 실제 GitHub repository URL과 Issues/지원 경로 확정
-4. P2 package와 Flux/Qwen/Video/multi-segment는 지원 범위 확장 시 별도 검증
+3. P2 package와 Flux/Qwen/Video/multi-segment는 지원 범위 확장 시 별도 검증
 
 ---
 
@@ -177,5 +176,5 @@ Actual Custom Node Inventory: Generated; workflow usage review complete
 Actual Workflow Usage Inventory: Generated; user-only state decisions pending
 Actual ComfyUI Integration: Passed (022-1~10)
 Local Production Ready: Yes
-Public Beta Ready: No — clean install / external first user / real repository-support URLs pending
+Public Beta Ready: No — clean install / external first user pending
 ```
