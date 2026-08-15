@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 import uuid
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -140,13 +141,16 @@ class TraceSession:
         options: TraceOptions,
         prompt: Any,
         extra_pnginfo: Any,
+        prompt_tokenization: Mapping[str, Any] | None = None,
         prompt_id: str | None = None,
     ) -> None:
         self.run_id = str(uuid.uuid4())
         self.node_id = str(node_id)
         self.prompt_id = str(prompt_id) if prompt_id else None
         self.options = options
+        self.workflow_name: str | None = None
         self.prompt_analysis = analyze_prompt(prompt)
+        self.prompt_tokenization = dict(prompt_tokenization or {})
         self.generation_settings = extract_generation_settings(self.prompt_analysis)
         self.extra_metadata = self._sanitize_extra_metadata(extra_pnginfo)
         self.model_snapshot: dict[str, Any] = {}
@@ -177,6 +181,7 @@ class TraceSession:
         options: TraceOptions,
         prompt: Any,
         extra_pnginfo: Any,
+        prompt_tokenization: Mapping[str, Any] | None = None,
         prompt_id: str | None = None,
     ) -> "TraceSession":
         session = cls(
@@ -184,6 +189,7 @@ class TraceSession:
             options=options,
             prompt=prompt,
             extra_pnginfo=extra_pnginfo,
+            prompt_tokenization=prompt_tokenization,
             prompt_id=prompt_id,
         )
         STORE.register_session(session)
@@ -219,6 +225,11 @@ class TraceSession:
             self.model_snapshot = snapshot_model_patcher(model)
             STORE.persist_run(self.to_run_payload())
 
+    def update_prompt_tokenization(self, payload: Mapping[str, Any]) -> None:
+        with self._lock:
+            self.prompt_tokenization = dict(payload)
+            STORE.persist_run(self.to_run_payload())
+
     def to_run_payload(self) -> dict[str, Any]:
         with self._lock:
             return {
@@ -227,6 +238,7 @@ class TraceSession:
                 "runId": self.run_id,
                 "nodeId": self.node_id,
                 "promptId": self.prompt_id,
+                "workflowName": self.workflow_name,
                 "label": self.options.label,
                 "status": self.status,
                 "createdAt": self.created_at,
@@ -234,6 +246,7 @@ class TraceSession:
                 "finishedAt": self.finished_at,
                 "workflowHash": self.prompt_analysis.get("workflowHash"),
                 "promptAnalysis": self.prompt_analysis,
+                "promptTokenization": self.prompt_tokenization,
                 "generationSettings": self.generation_settings,
                 "extraMetadata": self.extra_metadata,
                 "modelSnapshot": self.model_snapshot,
@@ -244,6 +257,11 @@ class TraceSession:
                 "errors": list(self.errors),
                 "frontendCompletion": self.frontend_completion,
             }
+
+    def set_workflow_name(self, workflow_name: str) -> None:
+        with self._lock:
+            self.workflow_name = workflow_name
+            STORE.persist_run(self.to_run_payload())
 
     def begin_sampling(
         self,

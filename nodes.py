@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from .trace_inspector.config import PREVIEW_FORMATS, TRACE_MODES, TraceOptions
+from .trace_inspector.config import PREVIEW_DECODERS, PREVIEW_FORMATS, TRACE_MODES, TraceOptions
 from .trace_inspector.events import emit
 from .trace_inspector.model_snapshot import snapshot_model_patcher
+from .trace_inspector.prompt_capture import PromptTokenCapture, TracingClipProxy
+from .trace_inspector.prompt_analysis import extract_standard_prompt_tokenization
 from .trace_inspector.runtime_hooks import install_runtime_hooks
 from .trace_inspector.session import TraceSession, utc_now
 from .trace_inspector.tensor_stats import conditioning_summary, recursive_tensor_summary, tensor_summary
@@ -44,6 +46,34 @@ def _record_probe(session: TraceSession | None, payload: dict[str, Any]) -> None
         emit("trace_inspector.probe", payload)
 
 
+class ComfyTraceClip:
+    """Pass CLIP through a non-mutating proxy and capture its actual tokenize calls."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"clip": ("CLIP",)},
+            "hidden": {"unique_id": "UNIQUE_ID", "prompt": "PROMPT"},
+        }
+
+    RETURN_TYPES = ("CLIP", "PROMPT_TRACE")
+    RETURN_NAMES = ("clip", "prompt_trace")
+    FUNCTION = "attach"
+    CATEGORY = "Sampling Trace Inspector"
+    DESCRIPTION = (
+        "Pass CLIP through unchanged while recording the actual Positive/Negative prompt tokenization calls. "
+        "Connect prompt_trace to Sampling Trace Model to save them in the same Run."
+    )
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("nan")
+
+    def attach(self, clip: Any, unique_id: str, prompt: Any = None):
+        capture = PromptTokenCapture(prompt, trace_node_id=str(unique_id))
+        return TracingClipProxy(clip, capture), capture
+
+
 class ComfyTraceModel:
     """Clone a MODEL and attach non-destructive sampling/model wrappers."""
 
@@ -61,6 +91,11 @@ class ComfyTraceModel:
                 "persist_previews": ("BOOLEAN", {"default": True}),
                 "persist_tensor_stats": ("BOOLEAN", {"default": True}),
             },
+            "optional": {
+                "preview_decoder": (PREVIEW_DECODERS, {"default": "clear"}),
+                "prompt_trace": ("PROMPT_TRACE",),
+                "clip": ("CLIP",),
+            },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
                 "prompt": "PROMPT",
@@ -71,7 +106,7 @@ class ComfyTraceModel:
     RETURN_TYPES = ("MODEL", "TRACE_SESSION")
     RETURN_NAMES = ("model", "trace_session")
     FUNCTION = "attach"
-    CATEGORY = "SamplingTrace Inspector"
+    CATEGORY = "Sampling Trace Inspector"
     DESCRIPTION = (
         "Attach Preview (중간 미리보기), Latent (잠재 표현), CFG, and ControlNet tracing "
         "to a cloned MODEL without replacing KSampler."
@@ -96,6 +131,9 @@ class ComfyTraceModel:
         unique_id: str,
         prompt: Any = None,
         extra_pnginfo: Any = None,
+        preview_decoder: str = "clear",
+        prompt_trace: Any = None,
+        clip: Any = None,
     ):
         options = TraceOptions.from_node_inputs(
             mode=mode,
@@ -106,15 +144,24 @@ class ComfyTraceModel:
             preview_quality=preview_quality,
             persist_previews=persist_previews,
             persist_tensor_stats=persist_tensor_stats,
+            preview_decoder=preview_decoder,
         )
         traced_model = model.clone()
+        prompt_tokenization = (
+            prompt_trace.snapshot()
+            if isinstance(prompt_trace, PromptTokenCapture)
+            else extract_standard_prompt_tokenization(prompt, clip)
+        )
         session = TraceSession.create(
             node_id=str(unique_id),
             options=options,
             prompt=prompt,
             extra_pnginfo=extra_pnginfo,
+            prompt_tokenization=prompt_tokenization,
             prompt_id=_current_prompt_id(),
         )
+        if isinstance(prompt_trace, PromptTokenCapture):
+            prompt_trace.bind(session)
         session.attach_model_snapshot(traced_model)
         try:
             install_runtime_hooks(traced_model, session)
@@ -129,6 +176,8 @@ class ComfyTraceModel:
 
 
 class ComfyTraceExport:
+    """Finalize a trace run and expose its report directory."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -142,7 +191,11 @@ class ComfyTraceExport:
     RETURN_NAMES = ("report_directory",)
     FUNCTION = "export"
     OUTPUT_NODE = True
-    CATEGORY = "SamplingTrace Inspector"
+    CATEGORY = "Sampling Trace Inspector"
+    DESCRIPTION = (
+        "Finish the connected Sampling Trace run, write its report files, "
+        "and return the saved run directory."
+    )
 
     def export(self, trace_session: TraceSession, status: str):
         trace_session.finalize(status=status)
@@ -151,6 +204,8 @@ class ComfyTraceExport:
 
 
 class ComfyTraceNote:
+    """Save a user note into the connected trace run."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -165,7 +220,11 @@ class ComfyTraceNote:
     RETURN_TYPES = ("TRACE_SESSION",)
     RETURN_NAMES = ("trace_session",)
     FUNCTION = "add_note"
-    CATEGORY = "SamplingTrace Inspector"
+    CATEGORY = "Sampling Trace Inspector"
+    DESCRIPTION = (
+        "Add an observation, hypothesis, decision, or issue note to the connected "
+        "Sampling Trace run."
+    )
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
@@ -187,7 +246,7 @@ class _ProbeBase:
     RETURN_TYPES: tuple[str, ...] = ()
     RETURN_NAMES: tuple[str, ...] = ()
     FUNCTION = "probe"
-    CATEGORY = "SamplingTrace Inspector/Probes"
+    CATEGORY = "Sampling Trace Inspector/Probes"
 
     @classmethod
     def optional_inputs(cls):
@@ -198,6 +257,8 @@ class _ProbeBase:
 
 
 class ComfyTraceImage(_ProbeBase):
+    """Record IMAGE tensor metadata without changing the image."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -208,6 +269,9 @@ class ComfyTraceImage(_ProbeBase):
 
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = ("image",)
+    DESCRIPTION = (
+        "Inspect IMAGE shape, type, range, and statistics, then pass the image through unchanged."
+    )
 
     def probe(self, image: Any, unique_id: str, label: str = "", trace_session: TraceSession | None = None):
         payload = _probe_payload(
@@ -221,6 +285,8 @@ class ComfyTraceImage(_ProbeBase):
 
 
 class ComfyTraceLatent(_ProbeBase):
+    """Record LATENT tensor metadata without changing the latent."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -231,6 +297,9 @@ class ComfyTraceLatent(_ProbeBase):
 
     RETURN_TYPES = ("LATENT",)
     RETURN_NAMES = ("latent",)
+    DESCRIPTION = (
+        "Inspect LATENT shape, keys, range, and statistics, then pass the latent through unchanged."
+    )
 
     def probe(self, latent: Any, unique_id: str, label: str = "", trace_session: TraceSession | None = None):
         samples = latent.get("samples") if isinstance(latent, dict) else latent
@@ -248,6 +317,8 @@ class ComfyTraceLatent(_ProbeBase):
 
 
 class ComfyTraceMask(_ProbeBase):
+    """Record MASK tensor metadata without changing the mask."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -258,6 +329,9 @@ class ComfyTraceMask(_ProbeBase):
 
     RETURN_TYPES = ("MASK",)
     RETURN_NAMES = ("mask",)
+    DESCRIPTION = (
+        "Inspect MASK shape, type, range, and statistics, then pass the mask through unchanged."
+    )
 
     def probe(self, mask: Any, unique_id: str, label: str = "", trace_session: TraceSession | None = None):
         payload = _probe_payload(
@@ -271,6 +345,8 @@ class ComfyTraceMask(_ProbeBase):
 
 
 class ComfyTraceConditioning(_ProbeBase):
+    """Record CONDITIONING metadata without changing conditioning."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -281,6 +357,9 @@ class ComfyTraceConditioning(_ProbeBase):
 
     RETURN_TYPES = ("CONDITIONING",)
     RETURN_NAMES = ("conditioning",)
+    DESCRIPTION = (
+        "Inspect prompt conditioning tensors and metadata, then pass the conditioning through unchanged."
+    )
 
     def probe(
         self,
@@ -304,6 +383,8 @@ class ComfyTraceConditioning(_ProbeBase):
 
 
 class ComfyTraceModelSnapshot(_ProbeBase):
+    """Record a point-in-time MODEL patch summary."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -314,6 +395,10 @@ class ComfyTraceModelSnapshot(_ProbeBase):
 
     RETURN_TYPES = ("MODEL",)
     RETURN_NAMES = ("model",)
+    DESCRIPTION = (
+        "Capture a point-in-time summary of MODEL patches and options, then pass the model through unchanged. "
+        "This does not start sampling trace capture by itself."
+    )
 
     def probe(self, model: Any, unique_id: str, label: str = "", trace_session: TraceSession | None = None):
         payload = _probe_payload(
@@ -327,6 +412,7 @@ class ComfyTraceModelSnapshot(_ProbeBase):
 
 
 NODE_CLASS_MAPPINGS = {
+    "ComfyTraceClip": ComfyTraceClip,
     "ComfyTraceModel": ComfyTraceModel,
     "ComfyTraceExport": ComfyTraceExport,
     "ComfyTraceNote": ComfyTraceNote,
@@ -338,12 +424,13 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ComfyTraceModel": "SamplingTrace Model",
-    "ComfyTraceExport": "SamplingTrace Export / Finalize",
-    "ComfyTraceNote": "SamplingTrace Note",
-    "ComfyTraceImage": "SamplingTrace Image",
-    "ComfyTraceLatent": "SamplingTrace Latent",
-    "ComfyTraceMask": "SamplingTrace Mask",
-    "ComfyTraceConditioning": "SamplingTrace Conditioning",
-    "ComfyTraceModelSnapshot": "SamplingTrace Model Snapshot",
+    "ComfyTraceClip": "Sampling Trace CLIP",
+    "ComfyTraceModel": "Sampling Trace Model",
+    "ComfyTraceExport": "Sampling Trace Export / Finalize",
+    "ComfyTraceNote": "Sampling Trace Note",
+    "ComfyTraceImage": "Sampling Trace Image",
+    "ComfyTraceLatent": "Sampling Trace Latent",
+    "ComfyTraceMask": "Sampling Trace Mask",
+    "ComfyTraceConditioning": "Sampling Trace Conditioning",
+    "ComfyTraceModelSnapshot": "Sampling Trace Model Snapshot",
 }

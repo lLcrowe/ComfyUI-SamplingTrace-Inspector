@@ -121,6 +121,7 @@ def build_graph(
                 "preview_max_side": 512,
                 "preview_format": "PNG",
                 "preview_quality": 100,
+                "preview_decoder": "fast",
                 "persist_previews": True,
                 "persist_tensor_stats": mode == "advanced_influence",
             },
@@ -301,7 +302,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Benchmark live ComfyUI SamplingTrace Inspector modes.")
+    parser = argparse.ArgumentParser(description="Benchmark live ComfyUI Sampling Trace Inspector modes.")
     parser.add_argument("--url", default="http://127.0.0.1:8888")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--output-root", type=Path, default=None)

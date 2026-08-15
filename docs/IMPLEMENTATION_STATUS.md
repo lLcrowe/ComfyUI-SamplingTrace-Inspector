@@ -91,6 +91,8 @@
 - Trace compatibility matrix와 Priority A/B/C adapter plan
 - 저장 workflow JSON, PNG prompt/workflow metadata, localhost history의 read-only 사용 증거 분류
 - 사용 상태와 추적 우선순위 분리; 미관찰 package는 `UNKNOWN` 유지
+- 원본을 수정하지 않는 Sampling Trace CLIP proxy와 실제 tokenize 호출 기반 Positive/Negative 역할·CLIP-L/G token capture
+- 패널의 Text Prompt & Tokens 및 Markdown/HTML 요약 (실제 패널 시각 검수 전)
 
 ---
 

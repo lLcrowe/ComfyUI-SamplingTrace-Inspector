@@ -5,7 +5,7 @@ description = "Preview-driven execution and sampling trace inspector for ComfyUI
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "ComfyUI SamplingTrace Inspector contributors" }]
+authors = [{ name = "ComfyUI Sampling Trace Inspector contributors" }]
 dependencies = []
 
 [project.urls]
@@ -14,7 +14,7 @@ Issues = "https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector/issues"
 
 [tool.comfy]
 PublisherId = "local-rnd"
-DisplayName = "ComfyUI SamplingTrace Inspector"
+DisplayName = "ComfyUI Sampling Trace Inspector"
 Icon = ""
 
 [tool.pytest.ini_options]

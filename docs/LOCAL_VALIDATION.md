@@ -35,9 +35,9 @@
 
 ```text
 python scripts/static_check.py: PASS (Python + JavaScript)
-pytest -q: 46 passed
+pytest -q: 67 passed
 python scripts/comfy_integration_smoke.py: PASS — embedded Python import 확인
-live server: PASS — nodes 8/8, route/web extension, Bottom panel, KSampler, Trace identity, ControlNet, P1 Adapter 3종, A/B reports, concurrent prompt linkage
+live server: PASS — nodes 9/9, route/web extension, Bottom panel, KSampler, Sampling Trace CLIP, Trace identity, ControlNet, P1 Adapter 3종, A/B reports, concurrent prompt linkage
 ```
 
 ## Minimum workflow
@@ -53,6 +53,20 @@ live server: PASS — nodes 8/8, route/web extension, Bottom panel, KSampler, Tr
 - Trace Off PNG / decoded RGBA SHA-256: `26117196...923f` / `273f9b62...d973`
 - Trace On PNG / decoded RGBA SHA-256: `26117196...923f` / `273f9b62...d973`
 - Equal: Yes — separate metadata-free cold/cold restarts; decoded pixel difference 0
+
+## Sampling Trace CLIP actual prompt capture — 2026-08-16 PASS
+
+- Workflow: Checkpoint CLIP → Sampling Trace CLIP → Positive/Negative CLIPTextEncode; prompt_trace → Sampling Trace Model → KSampler
+- Conditions: WAI Illustrious v17, 512², seed `2608160221`, Euler/normal, 8 steps, CFG 5.0
+- Cold Off prompt: `b4750f46-c6b8-4bcb-8d23-3e4e7cbac33d`
+- Cold On prompt / Run: `28527e95-28a6-45a6-a59a-6378149e71da` / `ac98c768-5edc-42e3-b351-39e89f58c3bc`
+- Metadata-free PNG SHA-256: Off/On both `5CBB78BE...07874D`
+- Decoded RGBA SHA-256: Off/On both `4AFFD811...753E4`; differing pixels `0`, per-channel mean absolute difference `0/0/0/0`
+- Callback: Off `progress → Live Preview` 8/8; On `Trace step → progress → Live Preview` 8/8
+- Capture: status `captured`, source `traced_clip`, two calls, Positive + Negative roles, CLIP-G + CLIP-L lanes, errors 0
+- Artifacts: `run.json`, `steps.jsonl`, `report.md`, `report.html`; no `probes.jsonl` because the workflow has no probe or note node
+- Browser: both prompt cards rendered together; selecting Negative showed its exact source and both CLIP-G/L token lanes
+- Fixed during validation: the default JSON depth bound truncated nested encoder/token values to `<max-depth>`. Run persistence and the Run API now use depth 16, with a regression test that checks a deep token ID survives disk round-trip.
 
 ## ControlNet
 
@@ -100,7 +114,7 @@ Conditions: WAI Illustrious v17, 512×512, Euler/normal, 8 steps, CFG 5.0, warmu
 
 ## Packaged internal acceptance — 2026-08-15 PASS
 
-- 별도 ComfyUI root·user/output/input/temp·port `8891`, SamplingTrace Inspector만 allowlist로 로드
+- 별도 ComfyUI root·user/output/input/temp·port `8891`, Sampling Trace Inspector만 allowlist로 로드
 - health·노드 8/8·웹 자산, checksum 75/75, static check, pytest 48 passed
 - health route와 새 실제 Run의 `pluginVersion` 모두 `0.4.0b1`
 - Off·Basic·Advanced standard·Advanced influence decoded RGBA 동일

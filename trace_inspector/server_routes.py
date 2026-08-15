@@ -14,6 +14,52 @@ _REGISTERED = False
 NOTE_CATEGORIES = {"observation", "hypothesis", "decision", "issue"}
 
 
+def _parse_optional_note_step(body: dict[str, Any]) -> tuple[bool, int | None]:
+    if "step" not in body:
+        return False, None
+    value = body.get("step")
+    if value is None or value == "":
+        return True, None
+    if isinstance(value, bool):
+        raise ValueError("invalid note step")
+    step = int(value)
+    if step < 0:
+        raise ValueError("invalid note step")
+    return True, step
+
+
+def _parse_optional_note_segment_index(body: dict[str, Any]) -> tuple[bool, int | None]:
+    if "segmentIndex" not in body:
+        return False, None
+    value = body.get("segmentIndex")
+    if value is None or value == "":
+        return True, None
+    if isinstance(value, bool):
+        raise ValueError("invalid note segment index")
+    segment_index = int(value)
+    if segment_index < 0:
+        raise ValueError("invalid note segment index")
+    return True, segment_index
+
+
+def _run_contains_step(
+    run: dict[str, Any],
+    step: int | None,
+    segment_index: int | None = None,
+) -> bool:
+    if step is None:
+        return segment_index is None
+    return any(
+        isinstance(item, dict)
+        and item.get("step") == step
+        and (
+            segment_index is None
+            or item.get("segmentIndex", 0) == segment_index
+        )
+        for item in run.get("steps", [])
+    )
+
+
 def register_routes() -> bool:
     global _REGISTERED
     if _REGISTERED:
@@ -57,7 +103,7 @@ def register_routes() -> bool:
             return web.json_response({"error": "invalid run id"}, status=400)
         if run is None:
             return web.json_response({"error": "run not found"}, status=404)
-        return web.json_response(json_safe(run))
+        return web.json_response(json_safe(run, max_depth=16))
 
     @routes.get("/trace-inspector/runs/{run_id}/artifact/{filename:.*}")
     async def trace_artifact(request):
@@ -131,6 +177,13 @@ def register_routes() -> bool:
             except (ValueError, OSError):
                 return web.json_response({"error": "run not found or invalid"}, status=404)
             event_type = event.get("type")
+            if event_type == "workflow_identity":
+                detail = event.get("detail", {})
+                workflow_name = detail.get("workflowName") if isinstance(detail, dict) else None
+                try:
+                    STORE.set_workflow_name(run_id, workflow_name)
+                except (ValueError, OSError, FileNotFoundError):
+                    return web.json_response({"error": "run not found or invalid"}, status=404)
             if event_type == "execution_success":
                 completion_status, completion_event = "success", event
             elif event_type == "execution_interrupted":
@@ -167,10 +220,23 @@ def register_routes() -> bool:
             return web.json_response({"error": "invalid json"}, status=400)
         text = str(body.get("text", "")).strip()[:8000]
         category = str(body.get("category", "observation"))
+        try:
+            _step_provided, step = _parse_optional_note_step(body)
+            _segment_provided, segment_index = _parse_optional_note_segment_index(body)
+        except (TypeError, ValueError):
+            return web.json_response({"error": "invalid note step target"}, status=400)
         if not text:
             return web.json_response({"error": "note text is required"}, status=400)
         if category not in NOTE_CATEGORIES:
             return web.json_response({"error": "invalid note category"}, status=400)
+        try:
+            run = STORE.get_run(run_id, include_steps=True)
+        except ValueError:
+            return web.json_response({"error": "invalid run id"}, status=400)
+        if run is None:
+            return web.json_response({"error": "run not found"}, status=404)
+        if not _run_contains_step(run, step, segment_index):
+            return web.json_response({"error": "note step not found in run"}, status=400)
         payload = {
             "noteId": str(uuid.uuid4()),
             "probeType": "note",
@@ -178,13 +244,15 @@ def register_routes() -> bool:
             "summary": {"text": text},
             "timestamp": utc_now(),
         }
+        if step is not None:
+            payload["step"] = step
+            if segment_index is not None:
+                payload["segmentIndex"] = segment_index
         session = STORE.active_session(run_id)
         if session is not None:
             session.add_probe(payload)
         else:
             try:
-                if STORE.get_run(run_id, include_steps=False) is None:
-                    raise FileNotFoundError(run_id)
                 STORE.append_probe(run_id, payload)
             except (ValueError, OSError, FileNotFoundError):
                 return web.json_response({"error": "run not found"}, status=404)
@@ -199,19 +267,39 @@ def register_routes() -> bool:
             return web.json_response({"error": "invalid json"}, status=400)
         text = str(body.get("text", "")).strip()[:8000]
         category = str(body.get("category", "observation"))
+        try:
+            step_provided, step = _parse_optional_note_step(body)
+            segment_provided, segment_index = _parse_optional_note_segment_index(body)
+        except (TypeError, ValueError):
+            return web.json_response({"error": "invalid note step target"}, status=400)
         if not text:
             return web.json_response({"error": "note text is required"}, status=400)
         if category not in NOTE_CATEGORIES:
             return web.json_response({"error": "invalid note category"}, status=400)
         try:
+            run_id = request.match_info["run_id"]
+            run = STORE.get_run(run_id, include_steps=True)
+            if run is None:
+                raise FileNotFoundError(run_id)
+            if segment_provided and not step_provided:
+                return web.json_response({"error": "note segment requires step"}, status=400)
+            if step_provided and not _run_contains_step(run, step, segment_index if segment_provided else None):
+                return web.json_response({"error": "note step not found in run"}, status=400)
+            update_kwargs: dict[str, Any] = {
+                "text": text,
+                "category": category,
+                "updated_at": utc_now(),
+            }
+            if step_provided:
+                update_kwargs["step"] = step
+            if segment_provided:
+                update_kwargs["segment_index"] = segment_index
             note = STORE.update_note(
-                request.match_info["run_id"],
+                run_id,
                 request.match_info["note_id"],
-                text=text,
-                category=category,
-                updated_at=utc_now(),
+                **update_kwargs,
             )
-            STORE.refresh_reports_if_present(request.match_info["run_id"])
+            STORE.refresh_reports_if_present(run_id)
         except (ValueError, OSError, FileNotFoundError):
             return web.json_response({"error": "run or note not found"}, status=404)
         return web.json_response({"ok": True, "note": json_safe(note)})

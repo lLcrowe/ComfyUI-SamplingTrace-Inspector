@@ -23,7 +23,7 @@
 
 ## 먼저 실행
 
-SamplingTrace Inspector 폴더에서:
+Sampling Trace Inspector 폴더에서:
 
 ```bash
 python scripts/scan_custom_nodes.py \

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from trace_inspector.config import TRACE_MODES, TraceOptions
+from trace_inspector.config import PREVIEW_DECODERS, TRACE_MODES, TraceOptions
 
 
-def _from_node(mode: str, *, persist_tensor_stats: bool = True) -> TraceOptions:
+def _from_node(
+    mode: str,
+    *,
+    persist_tensor_stats: bool = True,
+    preview_decoder: str = "clear",
+) -> TraceOptions:
     return TraceOptions.from_node_inputs(
         mode=mode,
         label="mode-contract",
@@ -13,11 +18,22 @@ def _from_node(mode: str, *, persist_tensor_stats: bool = True) -> TraceOptions:
         preview_quality=85,
         persist_previews=True,
         persist_tensor_stats=persist_tensor_stats,
+        preview_decoder=preview_decoder,
     )
 
 
 def test_public_modes_are_basic_and_advanced_only():
     assert TRACE_MODES == ("basic", "advanced")
+
+
+def test_public_preview_decoders_are_clear_and_fast():
+    assert PREVIEW_DECODERS == ("clear", "fast")
+    assert _from_node("basic").preview_decoder == "clear"
+    assert _from_node("basic", preview_decoder="fast").preview_decoder == "fast"
+
+
+def test_invalid_preview_decoder_falls_back_to_clear():
+    assert _from_node("basic", preview_decoder="unknown").preview_decoder == "clear"
 
 
 def test_legacy_deep_mode_is_folded_into_advanced():

@@ -1,4 +1,4 @@
-# ComfyUI SamplingTrace Inspector
+# ComfyUI Sampling Trace Inspector
 
 ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **노드 실행 흐름**, **Sampling Step (샘플링 단계)**, **Latent (잠재 표현 / 압축된 이미지 정보)**, **x0 (현재 예상 완성 Latent)**, **Sigma (현재 노이즈 강도)**, **CFG (조건 반영 강도)**, **ControlNet residual (제어 잔차)**을 한 타임라인에서 관찰하는 커스텀 노드 패키지입니다.
 
@@ -17,7 +17,7 @@ ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **
   → 다시 생성
 ```
 
-SamplingTrace Inspector는 이를 다음처럼 바꿉니다.
+Sampling Trace Inspector는 이를 다음처럼 바꿉니다.
 
 ```text
 Step Preview 관찰
@@ -127,6 +127,7 @@ python scripts/static_check.py
 
 ```text
 Trace Model (Sampling Inspector)
+Sampling Trace CLIP
 Trace Export / Finalize
 Trace Image
 Trace Latent
@@ -138,7 +139,7 @@ Trace Note
 
 5. 최종 MODEL patch 뒤, KSampler 앞에 `Trace Model`을 연결합니다.
 
-6. ComfyUI 하단의 `SamplingTrace Inspector` 패널을 엽니다.
+6. ComfyUI 하단의 `Sampling Trace Inspector` 패널을 엽니다.
 
 ---
 
@@ -146,16 +147,20 @@ Trace Note
 
 ```text
 [Checkpoint Loader]
-       MODEL
-         ↓
+       CLIP ──→ [Sampling Trace CLIP] ──→ Positive / Negative Text Encode
+                         └── PROMPT_TRACE ───────────────┐
+       MODEL                                             │
+         ↓                                               │
 [LoRA Loader]
          ↓
 [IPAdapter Advanced]
          ↓
-[Trace Model]
+[Trace Model] ←──────────────────────────────────────────┘
     MODEL ↓       └── TRACE_SESSION ──→ [Trace Export / Finalize] (선택)
 [KSampler]
 ```
+
+`Sampling Trace CLIP`의 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결하고, `prompt_trace`를 `Sampling Trace Model`에 연결합니다. 원본 CLIP을 수정하지 않는 proxy가 실제 `tokenize()` 반환값을 그대로 통과시킨 뒤 호출 노드·원문·CLIP-L/G token ID·입력 가중치·단어 묶음을 같은 Run에 기록합니다. 기존 `Sampling Trace Model.clip` 입력은 이전 표준 재토큰화 방식의 호환용으로만 유지합니다.
 
 ### `Trace Model`을 마지막 MODEL patch 뒤에 두는 이유
 
@@ -190,6 +195,13 @@ Preview를 몇 step마다 저장할지 결정합니다.
 ### `preview_max_side`
 저장 Preview의 긴 변 최대 크기입니다. 기본 768입니다.
 
+### `preview_decoder`
+
+- `clear` (기본): 모델 계열에 맞는 TAESD가 설치되어 있으면 이를 사용해 잠재 해상도가 아닌 실제 이미지 크기에 가까운 선명한 Preview를 저장합니다.
+- `fast`: Latent2RGB를 사용합니다. 빠르지만 원본이 잠재 해상도라 패널에서 확대하면 픽셀이 크게 보일 수 있습니다.
+
+`clear`도 TAESD가 없으면 자동으로 `fast` 방식으로 대체됩니다. 이 설정은 Trace 저장용 Preview에만 적용되며 ComfyUI의 기존 Live Preview 설정은 바꾸지 않습니다.
+
 ### `persist_previews`
 끄면 이미지 저장 없이 수치 Trace만 남깁니다.
 
@@ -200,9 +212,9 @@ Preview를 몇 step마다 저장할지 결정합니다.
 ```text
 현재 step의 x0
   ↓
-ComfyUI Preview decoder
-  ├─ Latent2RGB
-  └─ TAESD
+Trace Preview decoder
+  ├─ clear → 모델별 TAESD → 없으면 Latent2RGB
+  └─ fast  → Latent2RGB
   ↓
 빠른 근사 Preview
 ```
@@ -214,8 +226,15 @@ ComfyUI Preview decoder
 ## 8. 패널 기능
 
 ### Run List
-- 실행별 Label / Status / Step 수
+- 실행 시 활성 워크플로 파일명 / Label / Status / Step 수
 - 최근 실행 선택
+- 실행이 많아지면 제목은 고정되고 목록만 세로로 스크롤됩니다.
+
+워크플로 이름은 로컬 절대경로 없이 파일명만 `run.json`과 보고서에 저장됩니다. 저장되지 않은 워크플로나 API 실행은 기존 Label 또는 Run ID로 표시됩니다.
+
+가운데 작업 영역과 우측 `Selected Run / Compare Runs` 사이 경계선을 드래그하면 우측 폭을 조절할 수 있습니다. 폭은 현재 브라우저에 저장되며, 경계선을 더블클릭하면 기본 폭으로 돌아갑니다.
+
+일반 생성은 성공했지만 `Sampling Trace Model`이 실행 그래프에 없어서 새 Run이 생기지 않은 경우, 패널 상단에 `최종 MODEL → Sampling Trace Model → 샘플러` 연결 안내가 표시됩니다.
 
 ### Step Viewer
 - Step 슬라이더
@@ -233,6 +252,14 @@ ComfyUI Preview decoder
 - 실행 시간
 - 오류/중단
 
+### Text Prompt & Tokens
+- 실제 `Sampling Trace CLIP`을 통과한 Text Encode의 호출 원문
+- 표준·커스텀 sampler의 `positive` / `negative` 소켓을 역추적한 역할
+- 실제 호출별 encoder chunk, token ID, 표시 조각, 입력 가중치, word ID
+- 특수 토큰과 padding은 접힌 원시 보기에서 확인
+
+이 구역은 토큰이 어떻게 분할되고 어떤 입력 가중치가 적용됐는지 보여줍니다. Attention, 품질 기여율, 인과 비율은 아직 측정하지 않습니다.
+
 ### A/B Compare
 - 실행 A/B 설정 차이
 - workflow hash·node 수와 요청 sampler → 실제 sampler 비교
@@ -249,6 +276,8 @@ ComfyUI Preview decoder
 - Decision (결정)
 - Issue (문제)
 - 선택한 Run 안에서 저장된 노트를 다시 보고, 내용·분류를 수정하거나 개별 삭제할 수 있습니다.
+- 우측 전체가 메모 영역은 아닙니다. `Selected Run` 안의 입력줄과 `Notes` 목록만 선택한 Run에 귀속되는 메모입니다.
+- 메모 화면은 `관찰 / 가설 / 결정 / 문제`로 표시하지만 저장 스키마는 호환성을 위해 `observation / hypothesis / decision / issue`를 유지합니다.
 - 노트 추가·수정·삭제 시 기존 `report.md`와 `report.html`이 함께 갱신됩니다.
 
 ---
@@ -270,6 +299,8 @@ ComfyUI/user/trace_inspector/runs/<run_id>/
    ├─ segment_00_step_0001.jpg
    └─ ...
 ```
+
+`run.json`의 `promptTokenization`에는 지원되는 표준 프롬프트의 원문과 실제 토큰 기록이 들어갑니다. 프롬프트와 모델 파일명은 민감할 수 있으므로 GitHub에 Run 폴더를 함께 공개하기 전 내용을 확인하세요.
 
 `folder_paths.get_user_directory()`를 사용할 수 없으면 플러그인 내부 `data/runs/`로 fallback합니다.
 노트와 Run은 사용자 실행 데이터이며 소스 배포 파일이 아닙니다. fallback `data/`도 `.gitignore`에 포함되어 GitHub 저장소에 기본적으로 커밋되지 않습니다.
@@ -336,9 +367,10 @@ python scripts/comfy_integration_smoke.py
 - LoRA / IPAdapter / ControlNet / KSampler semantic adapter
 - Run 저장·보고서·A/B 비교
 - 하단 패널
+- 실제 CLIP 호출 기반 Positive/Negative 원문·CLIP-L/G 토큰 보기와 보고서 요약
 
 ### 실제 설치본에서 검증됨
-- frontend bottom panel·확대 보기·수직 스크롤·Notes
+- frontend bottom panel·확대 보기·독립 수직 스크롤·가변 우측 패널·Notes
 - 표준 KSampler Trace On/Off decoded pixel 동일성
 - SDXL / Illustrious XL Preview
 - OpenPose·Depth ControlNet residual과 A/B Preview
@@ -348,6 +380,8 @@ python scripts/comfy_integration_smoke.py
 - Off / Basic / Advanced 성능·디스크 기준선
 
 ### 추가 호환성 검증 필요
+- 실제 패널에서 새 프롬프트 토큰 구역 시각 검수
+- Flux / Qwen Image처럼 CLIP 이외 tokenizer API를 쓰는 모델 계열
 - 여러 KSampler segment가 있는 workflow
 - Flux / Qwen Image / Video 모델 계열
 

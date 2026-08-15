@@ -10,6 +10,10 @@ from .json_utils import append_jsonl, atomic_write_json, atomic_write_jsonl, rea
 from .report import write_comparison_reports, write_reports
 
 
+_NOTE_STEP_UNSET = object()
+_NOTE_SEGMENT_UNSET = object()
+
+
 def default_base_directory() -> Path:
     try:
         import folder_paths
@@ -26,6 +30,15 @@ def _number(value: Any) -> float | None:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return float(value)
     return None
+
+
+def normalize_workflow_name(value: Any) -> str | None:
+    """Keep only a display filename; never persist a local workflow path."""
+    if not isinstance(value, str):
+        return None
+    name = value.replace("\x00", "").replace("\r", " ").replace("\n", " ").strip()
+    name = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    return name[:240] or None
 
 
 def _absolute_difference(left: Any, right: Any) -> float | None:
@@ -101,7 +114,10 @@ class TraceStore:
         with self._lock:
             run_dir = self.run_directory(payload["runId"])
             run_dir.mkdir(parents=True, exist_ok=True)
-            atomic_write_json(run_dir / "run.json", payload)
+            # Prompt token chunks add several bounded list/dict layers below
+            # the already-sanitized Run payload. Keep those values intact while
+            # retaining the shallower default for unrelated JSON writes.
+            atomic_write_json(run_dir / "run.json", payload, max_depth=16)
 
     def append_step(self, run_id: str, payload: dict[str, Any]) -> None:
         with self._lock:
@@ -119,6 +135,8 @@ class TraceStore:
         text: str,
         category: str,
         updated_at: str,
+        step: int | None | object = _NOTE_STEP_UNSET,
+        segment_index: int | None | object = _NOTE_SEGMENT_UNSET,
     ) -> dict[str, Any]:
         with self._lock:
             run_dir = self.run_directory(run_id)
@@ -135,6 +153,17 @@ class TraceStore:
                 probe["label"] = category
                 probe["summary"] = {"text": text}
                 probe["updatedAt"] = updated_at
+                if step is not _NOTE_STEP_UNSET:
+                    if step is None:
+                        probe.pop("step", None)
+                        probe.pop("segmentIndex", None)
+                    else:
+                        probe["step"] = step
+                if segment_index is not _NOTE_SEGMENT_UNSET and step is not None:
+                    if segment_index is None:
+                        probe.pop("segmentIndex", None)
+                    else:
+                        probe["segmentIndex"] = segment_index
                 updated = probe
                 break
             if updated is None:
@@ -175,6 +204,24 @@ class TraceStore:
         with self._lock:
             append_jsonl(self.run_directory(run_id) / "frontend_events.jsonl", payload)
 
+    def set_workflow_name(self, run_id: str, value: Any) -> str | None:
+        workflow_name = normalize_workflow_name(value)
+        if workflow_name is None:
+            return None
+        session = self.active_session(run_id)
+        if session is not None:
+            session.set_workflow_name(workflow_name)
+            return workflow_name
+
+        with self._lock:
+            run = self.get_run(run_id, include_steps=False)
+            if run is None:
+                raise FileNotFoundError(run_id)
+            run["workflowName"] = workflow_name
+            self.persist_run(run)
+        self.refresh_reports_if_present(run_id)
+        return workflow_name
+
     def get_run(self, run_id: str, *, include_steps: bool = True) -> dict[str, Any] | None:
         with self._lock:
             run_dir = self.run_directory(run_id)
@@ -199,6 +246,7 @@ class TraceStore:
                     {
                         "runId": run.get("runId"),
                         "promptId": run.get("promptId"),
+                        "workflowName": run.get("workflowName"),
                         "label": run.get("label"),
                         "status": run.get("status"),
                         "createdAt": run.get("createdAt"),
@@ -337,8 +385,8 @@ class TraceStore:
         left_hash = left.get("workflowHash")
         right_hash = right.get("workflowHash")
         return {
-            "left": {k: left.get(k) for k in ("runId", "promptId", "nodeId", "label", "status", "createdAt", "options", "generationSettings")},
-            "right": {k: right.get(k) for k in ("runId", "promptId", "nodeId", "label", "status", "createdAt", "options", "generationSettings")},
+            "left": {k: left.get(k) for k in ("runId", "promptId", "nodeId", "workflowName", "label", "status", "createdAt", "options", "generationSettings")},
+            "right": {k: right.get(k) for k in ("runId", "promptId", "nodeId", "workflowName", "label", "status", "createdAt", "options", "generationSettings")},
             "workflow": {
                 "leftHash": left_hash,
                 "rightHash": right_hash,

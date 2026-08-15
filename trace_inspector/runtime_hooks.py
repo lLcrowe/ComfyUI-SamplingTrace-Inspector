@@ -49,7 +49,10 @@ def install_runtime_hooks(model_patcher: Any, session: TraceSession) -> Any:
         sigmas = _argument(args, kwargs, 3, "sigmas")
         original_callback = _argument(args, kwargs, 5, "callback")
         seed = _argument(args, kwargs, 7, "seed")
-        previewer = create_previewer(model_patcher)
+        previewer = create_previewer(
+            model_patcher,
+            getattr(session.options, "preview_decoder", "clear"),
+        )
 
         trace_active = False
         try:

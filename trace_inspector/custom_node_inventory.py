@@ -1534,7 +1534,7 @@ def render_adapter_priority(inventory: dict[str, Any]) -> str:
         "",
     ]
     descriptions = {
-        "A": "Inspect and validate before full SamplingTrace Inspector rollout.",
+        "A": "Inspect and validate before full Sampling Trace Inspector rollout.",
         "B": "Generic trace first; add adapters when the workflow needs deeper meaning.",
         "C": "Execution/cache/branch visibility is usually sufficient.",
     }

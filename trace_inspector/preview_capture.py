@@ -14,8 +14,55 @@ def unwrap_latent(value: Any) -> Any:
     return value
 
 
-def create_previewer(model_patcher: Any) -> Any | None:
-    """Use ComfyUI's configured Preview decoder (Latent2RGB or TAESD)."""
+def _latent2rgb_previewer(latent_preview: Any, latent_format: Any) -> Any | None:
+    factors = getattr(latent_format, "latent_rgb_factors", None)
+    if factors is None:
+        return None
+    return latent_preview.Latent2RGBPreviewer(
+        factors,
+        getattr(latent_format, "latent_rgb_factors_bias", None),
+        getattr(latent_format, "latent_rgb_factors_reshape", None),
+    )
+
+
+def _taesd_previewer(latent_preview: Any, latent_format: Any, load_device: Any) -> Any | None:
+    import folder_paths
+
+    decoder_name = getattr(latent_format, "taesd_decoder_name", None)
+    if not decoder_name:
+        return None
+    decoder_file = next(
+        (name for name in folder_paths.get_filename_list("vae_approx") if name.startswith(decoder_name)),
+        "",
+    )
+    decoder_path = folder_paths.get_full_path("vae_approx", decoder_file)
+    if not decoder_path:
+        return None
+
+    if decoder_name in getattr(latent_preview, "VIDEO_TAES", ()):
+        import comfy.utils
+        from comfy.sd import VAE
+
+        taesd = VAE(comfy.utils.load_torch_file(decoder_path))
+        taesd.first_stage_model.show_progress_bar = False
+        return latent_preview.TAEHVPreviewerImpl(taesd)
+
+    from comfy.taesd.taesd import TAESD
+
+    taesd = TAESD(
+        None,
+        decoder_path,
+        latent_channels=getattr(latent_format, "latent_channels", 4),
+    ).to(load_device)
+    return latent_preview.TAESDPreviewerImpl(taesd)
+
+
+def create_previewer(model_patcher: Any, decoder: str = "clear") -> Any | None:
+    """Create a Trace-only previewer without changing ComfyUI's live preview setting.
+
+    Clear prefers the installed model-specific TAESD decoder. Fast keeps the
+    inexpensive latent-space RGB projection used by ComfyUI's Auto mode.
+    """
     try:
         import latent_preview
 
@@ -24,19 +71,14 @@ def create_previewer(model_patcher: Any) -> Any | None:
         load_device = getattr(model_patcher, "load_device", None)
         if latent_format is None or load_device is None:
             return None
-        previewer = latent_preview.get_previewer(load_device, latent_format)
-        if previewer is not None:
-            return previewer
-        # Trace capture can still use the model's cheap Latent2RGB factors when
-        # ComfyUI's normal live preview is disabled.
-        factors = getattr(latent_format, "latent_rgb_factors", None)
-        if factors is not None:
-            return latent_preview.Latent2RGBPreviewer(
-                factors,
-                getattr(latent_format, "latent_rgb_factors_bias", None),
-                getattr(latent_format, "latent_rgb_factors_reshape", None),
-            )
-        return None
+        if str(decoder).lower() == "clear":
+            try:
+                previewer = _taesd_previewer(latent_preview, latent_format, load_device)
+            except Exception:
+                previewer = None
+            if previewer is not None:
+                return previewer
+        return _latent2rgb_previewer(latent_preview, latent_format)
     except Exception:
         return None
 

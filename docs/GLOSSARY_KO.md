@@ -1,4 +1,4 @@
-# ComfyUI SamplingTrace Inspector — 용어집
+# ComfyUI Sampling Trace Inspector — 용어집
 
 영문 원어를 유지하면서 처음 보는 사람이 대략적인 역할을 알 수 있도록 정리했습니다.
 

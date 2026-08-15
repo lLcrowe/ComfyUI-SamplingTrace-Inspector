@@ -4,6 +4,11 @@
 
 Preview (중간 미리보기)는 x0를 Latent2RGB 또는 TAESD로 빠르게 디코드한 근사입니다.
 
+- `preview_decoder=clear`: 설치된 모델별 TAESD를 우선 사용해 더 큰 선명한 근사 화면을 만듭니다.
+- `preview_decoder=fast`: 잠재 해상도의 Latent2RGB를 사용해 빠르지만 확대 시 픽셀이 두드러집니다.
+
+둘 다 최종 VAE Decode와 동일한 품질을 보장하지 않습니다.
+
 잘 보는 것:
 - 구도
 - 실루엣
@@ -183,13 +188,21 @@ A/B 실험 자동 생성
 사용자 승인 후 workflow 변경
 ```
 
+---
+
+## 15. Prompt Token 표시 범위
+
+현재 실제 tokenizer 기록은 `Sampling Trace CLIP` proxy의 `tokenize()`를 호출하는 Text Encode를 대상으로 합니다. 표준·커스텀 sampler의 `positive/negative` 명명 소켓은 역추적하지만, 다른 이름으로 Conditioning 역할을 숨긴 파이프라인은 역할이 `unknown`으로 남을 수 있습니다. Flux, Qwen Image처럼 CLIP 이외 tokenizer API를 쓰는 계열은 아직 호환을 보장하지 않습니다.
+
+표시하는 weight는 ComfyUI prompt parser가 tokenizer 입력에 적용한 값입니다. Token attention, cross-attention map, 이미지 품질 기여율 또는 인과 비율은 아닙니다.
+
 자동으로 workflow 파라미터를 변경하지 않습니다.
 
 ---
 
 ## 15. 네트워크 노출과 접근 경계
 
-SamplingTrace Inspector의 REST route와 Preview/report 파일은 ComfyUI 서버와 같은 접근 경계를 사용합니다.
+Sampling Trace Inspector의 REST route와 Preview/report 파일은 ComfyUI 서버와 같은 접근 경계를 사용합니다.
 
 따라서 ComfyUI를 `--listen 0.0.0.0`으로 외부 네트워크에 열면 다음 데이터도 접근 대상이 될 수 있습니다.
 

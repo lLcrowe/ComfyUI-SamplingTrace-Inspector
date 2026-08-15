@@ -1,4 +1,4 @@
-# Codex Handoff — ComfyUI SamplingTrace Inspector
+# Codex Handoff — ComfyUI Sampling Trace Inspector
 
 ## 1. 인계 목표
 
@@ -112,7 +112,7 @@ python scripts/comfy_integration_smoke.py
 - import error 없음
 - route duplicate 없음
 - `Trace Model` 노드 검색 가능
-- `SamplingTrace Inspector` bottom panel 표시
+- `Sampling Trace Inspector` bottom panel 표시
 - browser console error 없음
 
 ### Step D — 가장 작은 workflow

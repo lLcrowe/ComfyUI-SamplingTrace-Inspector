@@ -1,4 +1,4 @@
-# ComfyUI SamplingTrace Inspector — Architecture
+# ComfyUI Sampling Trace Inspector — Architecture
 
 ## 1. 핵심 판단
 
@@ -60,7 +60,13 @@ Frontend Trace Panel
   ├─ execution_cached
   └─ success/error/interrupted
 
-Trace Model node
+Trace CLIP node
+  ↓ non-mutating CLIP proxy
+Positive / Negative Text Encode
+  ↓ actual tokenize call → PromptTokenCapture
+  └─ PROMPT_TRACE ───────────────┐
+                                  ↓
+Trace Model node ← prompt capture bind
   ↓ clone MODEL
 ModelPatcher
   ├─ OUTER_SAMPLE wrapper
@@ -168,9 +174,9 @@ Advanced mode에서 `persist_tensor_stats=true`일 때만 residual 통계를 계
 ```text
 x0 Latent
   ↓
-ComfyUI configured Previewer
-  ├─ Latent2RGB
-  └─ TAESD
+Trace Previewer
+  ├─ clear → model-specific TAESD
+  └─ fast  → Latent2RGB
   ↓
 PIL Image
   ↓ max side resize
@@ -179,7 +185,7 @@ JPEG / PNG
 artifacts/
 ```
 
-ComfyUI live Preview가 꺼진 경우에도 latent RGB factor가 있으면 Latent2RGB fallback을 시도합니다.
+`clear`는 설치된 모델별 TAESD를 ComfyUI의 전역 Live Preview 설정과 독립적으로 선택합니다. TAESD를 찾지 못하거나 `fast`를 선택하면 latent RGB factor 기반 Latent2RGB로 대체합니다.
 
 ### Preview change score
 
@@ -197,6 +203,8 @@ Absolute RGB difference mean / 255
 
 ### run.json
 작은 최신 상태 snapshot입니다.
+
+`promptTokenization`은 `Sampling Trace CLIP` proxy를 통과한 실제 `tokenize()` 반환값을 변경 없이 관측해 저장합니다. 실행 context의 Text Encode node ID와 API prompt의 모든 `positive/negative` 명명 소켓을 역추적해 표준·커스텀 sampler 역할을 연결합니다. `PROMPT_TRACE`는 Trace Model의 Run에 캡처를 bind하며, Text Encode가 먼저 실행된 경우에도 메모리 캡처를 bind 시점에 flush합니다. Conditioning을 재생성하지 않고 CLIP 모델 추론도 추가하지 않습니다. 이전 `Trace Model.clip` 직접 입력은 표준 노드 재토큰화 호환 경로로 유지합니다.
 
 ### steps.jsonl
 Step마다 append합니다. 생성이 중단돼도 앞부분이 남습니다.

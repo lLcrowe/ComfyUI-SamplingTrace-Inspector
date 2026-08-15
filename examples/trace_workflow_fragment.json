@@ -9,6 +9,7 @@
       "preview_max_side": 768,
       "preview_format": "JPEG",
       "preview_quality": 85,
+      "preview_decoder": "clear",
       "persist_previews": true,
       "persist_tensor_stats": true
     }

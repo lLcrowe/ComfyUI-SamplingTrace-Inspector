@@ -57,6 +57,8 @@
 .cti-title { font-size: 13px; letter-spacing: 0.01em; }
 .cti-brand-subtitle, .cti-section-kicker { color: var(--cti-muted); font-size: 10px; }
 .cti-status { margin-left: auto; color: var(--cti-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cti-execution-notice { flex: 0 0 auto; padding: 6px 9px; border-bottom: 1px solid var(--cti-border); border-left: 3px solid var(--cti-warning); background: var(--cti-panel-raised); color: var(--cti-text); }
+.cti-execution-notice:empty { display: none; }
 
 .cti-button { border: 1px solid var(--cti-border-strong); background: var(--cti-panel-raised); color: inherit; min-height: 25px; padding: 3px 8px; border-radius: 3px; cursor: pointer; }
 .cti-button:hover { border-color: var(--cti-accent); background: var(--cti-accent-soft); }
@@ -66,23 +68,33 @@
 
 .cti-body {
   display: grid;
-  grid-template-columns: minmax(176px, 210px) minmax(520px, 1fr) minmax(300px, 360px);
-  align-items: start;
+  grid-template-columns: minmax(176px, 210px) minmax(480px, 1fr) 7px var(--cti-right-width, 360px);
+  align-items: stretch;
   flex: 1;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: scroll;
-  scrollbar-gutter: stable;
+  overflow: hidden;
 }
-.cti-runs, .cti-center, .cti-right { min-width: 0; min-height: 0; overflow: visible; border-right: 1px solid var(--cti-border); }
+.cti-runs, .cti-center, .cti-right { min-width: 0; min-height: 0; border-right: 1px solid var(--cti-border); }
+.cti-runs { display: flex; flex-direction: column; overflow: hidden; }
+.cti-runs > .cti-section-title { flex: 0 0 auto; padding: 3px 4px; }
+.cti-run-list, .cti-center, .cti-right { overflow-y: auto; scrollbar-gutter: stable; }
+.cti-run-list { min-height: 0; flex: 1 1 auto; overflow-y: scroll; overscroll-behavior: contain; }
+.cti-center, .cti-right { overscroll-behavior: contain; }
 .cti-right { border-right: 0; background: var(--cti-panel); }
+.cti-right-splitter { position: relative; min-width: 7px; cursor: col-resize; touch-action: none; background: var(--cti-bg); border-left: 1px solid var(--cti-border); border-right: 1px solid var(--cti-border); }
+.cti-right-splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--cti-border-strong); }
+.cti-right-splitter:hover::after, .cti-right-splitter:focus-visible::after, .cti-root.is-resizing-right .cti-right-splitter::after { background: var(--cti-accent); }
+.cti-right-splitter:focus-visible { outline: 1px solid var(--cti-accent); outline-offset: -1px; }
+.cti-root.is-resizing-right, .cti-root.is-resizing-right * { cursor: col-resize !important; user-select: none !important; }
 .cti-section { padding: 9px; border-bottom: 1px solid var(--cti-border); }
 .cti-viewer-section { padding-bottom: 11px; }
 .cti-path-section { background: var(--cti-panel); }
+.cti-prompt-section { background: var(--cti-bg); }
 .cti-section-title { margin: 0; font-size: 12px; font-weight: 650; }
 .cti-section-header { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
 .cti-section-header > .cti-heading-group:first-child { margin-right: auto; }
 .cti-heading-group { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cti-zone-label { margin-bottom: 6px; color: var(--cti-muted); font-size: 9px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; }
 
 .cti-run-list { display: flex; flex-direction: column; gap: 3px; }
 .cti-run-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 6px; width: 100%; padding: 7px; text-align: left; color: inherit; background: transparent; border: 1px solid transparent; border-left: 2px solid transparent; border-radius: 2px; cursor: pointer; }
@@ -138,10 +150,38 @@
 .cti-node-inputs dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10px/1.4 ui-monospace, monospace; }
 .cti-probe-summary { display: flex; gap: 8px; margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--cti-border); color: var(--cti-output); }
 
+.cti-prompt-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 5px; margin-bottom: 8px; }
+.cti-prompt-tab { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; color: var(--cti-muted); text-align: left; }
+.cti-prompt-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.cti-prompt-tab.selected { color: var(--cti-text); border-color: var(--cti-accent); background: var(--cti-accent-soft); }
+.cti-prompt-call-tabs { display: flex; gap: 4px; margin: 0 0 6px; overflow-x: auto; }
+.cti-prompt-call { min-height: 22px; color: var(--cti-muted); font: 10px/1.3 ui-monospace, monospace; }
+.cti-prompt-call.selected { color: var(--cti-text); border-color: var(--cti-accent); background: var(--cti-accent-soft); }
+.cti-prompt-head { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-bottom: 7px; }
+.cti-prompt-roles { display: flex; gap: 4px; }
+.cti-badge.prompt-positive { border: 1px solid var(--cti-output); color: var(--cti-output); }
+.cti-badge.prompt-negative { border: 1px solid var(--cti-warning); color: var(--cti-warning); }
+.cti-prompt-copies { display: grid; gap: 5px; margin-bottom: 8px; }
+.cti-prompt-copy { min-width: 0; padding: 7px; border-left: 2px solid var(--cti-border-strong); background: var(--cti-panel); }
+.cti-prompt-copy .cti-zone-label { display: block; margin-bottom: 3px; }
+.cti-prompt-copy pre { max-height: 130px; margin: 0; overflow: auto; color: var(--cti-text); font: 11px/1.45 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cti-token-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 7px; }
+.cti-token-lane { min-width: 0; padding: 7px; border: 1px solid var(--cti-border); background: var(--cti-panel); }
+.cti-token-lane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.cti-token-chips { display: flex; flex-wrap: wrap; gap: 3px; max-height: 150px; overflow-y: auto; }
+.cti-token-chip { min-height: 22px; max-width: 180px; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10px/1.3 ui-monospace, monospace; }
+.cti-token-chip:hover, .cti-token-chip.selected { border-color: var(--cti-accent); background: var(--cti-accent-soft); }
+.cti-token-detail { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; margin-top: 7px; padding: 7px; border-left: 2px solid var(--cti-accent); background: var(--cti-panel-raised); }
+.cti-token-detail > :nth-child(n+2) { min-width: 0; overflow-wrap: anywhere; }
+.cti-token-detail code { grid-column: 1 / -1; color: var(--cti-accent); }
+.cti-prompt-boundary { margin: 7px 0 0; }
+
 .cti-summary-strip { display: grid; grid-template-columns: repeat(2, minmax(90px, 1fr)); gap: 0 8px; }
-.cti-note-row, .cti-compare-controls { display: flex; gap: 5px; margin-top: 8px; }
-.cti-note-row input { flex: 1; min-width: 0; }
-.cti-note-row input, .cti-note-row select, .cti-select { color: inherit; background: var(--cti-panel-raised); border: 1px solid var(--cti-border); border-radius: 2px; padding: 4px; }
+.cti-note-row { display: grid; gap: 5px; margin-top: 8px; }
+.cti-note-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 5px; }
+.cti-compare-controls { display: flex; gap: 5px; margin-top: 8px; }
+.cti-note-row textarea { width: 100%; min-width: 0; min-height: 68px; max-height: 180px; box-sizing: border-box; resize: vertical; overflow-y: auto; color: inherit; background: var(--cti-panel-raised); border: 1px solid var(--cti-border); border-radius: 2px; padding: 6px; font: inherit; line-height: 1.4; }
+.cti-note-row select, .cti-select { color: inherit; background: var(--cti-panel-raised); border: 1px solid var(--cti-border); border-radius: 2px; padding: 4px; }
 .cti-notes { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--cti-border); }
 .cti-notes-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .cti-note-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
@@ -149,10 +189,10 @@
 .cti-note-meta { display: flex; align-items: center; gap: 6px; }
 .cti-note-time { margin-left: auto; color: var(--cti-muted); font-size: 9px; }
 .cti-note-text { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.cti-note-actions { display: flex; justify-content: flex-end; gap: 5px; }
+.cti-note-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
 .cti-note-actions .cti-button.danger { margin-left: 0; }
-.cti-note-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-top: 6px; }
-.cti-note-editor textarea { grid-column: 1 / -1; min-height: 68px; resize: vertical; color: inherit; background: var(--cti-panel-raised); border: 1px solid var(--cti-border); border-radius: 2px; padding: 6px; font: inherit; }
+.cti-note-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; margin-top: 6px; }
+.cti-note-editor textarea { grid-column: 1 / -1; min-height: 68px; max-height: 180px; box-sizing: border-box; resize: vertical; overflow-y: auto; color: inherit; background: var(--cti-panel-raised); border: 1px solid var(--cti-border); border-radius: 2px; padding: 6px; font: inherit; line-height: 1.4; }
 .cti-note-editor .cti-note-actions { align-self: end; }
 .cti-note-feedback { margin-top: 6px; padding: 5px 7px; border-left: 2px solid var(--cti-success); background: var(--cti-panel-raised); }
 .cti-note-feedback.error { border-left-color: var(--cti-danger); color: var(--cti-danger); }
@@ -183,12 +223,15 @@
 .cti-diagnostic ul { margin: 4px 0 0 18px; padding: 0; }
 
 @media (max-width: 1180px) {
-  .cti-body { grid-template-columns: 176px minmax(480px, 1fr); }
+  .cti-body { grid-template-columns: 176px minmax(480px, 1fr); overflow-y: auto; }
+  .cti-runs, .cti-center, .cti-right { overflow-y: visible; }
+  .cti-run-list { max-height: 190px; overflow-y: auto; }
+  .cti-right-splitter { display: none; }
   .cti-right { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--cti-border); }
 }
 @media (max-width: 760px) {
   .cti-body { grid-template-columns: 1fr; }
-  .cti-runs { max-height: 150px; }
+  .cti-run-list { max-height: 150px; }
   .cti-visual-workspace, .cti-right { grid-template-columns: 1fr; }
   .cti-step-insight { border-left: 0; border-top: 1px solid var(--cti-border); }
 }

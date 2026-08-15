@@ -99,7 +99,7 @@ python scripts/comfy_integration_smoke.py
 - import error 없음
 - route duplicate 없음
 - `Trace Model` 검색 가능
-- `SamplingTrace Inspector` bottom panel 표시
+- `Sampling Trace Inspector` bottom panel 표시
 - browser console error 없음
 
 ## 4. 최소 workflow 검증

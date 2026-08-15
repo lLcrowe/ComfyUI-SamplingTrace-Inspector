@@ -1,0 +1,190 @@
+{
+  "ComfyTraceClip": {
+    "display_name": "샘플링 추적 CLIP",
+    "description": "원본 CLIP을 변경하지 않고 실제 긍정·부정 프롬프트 토큰화 호출을 기록합니다. 하나의 출력을 여러 Text Encode 노드에 연결할 수 있습니다.",
+    "inputs": {
+      "clip": {
+        "name": "CLIP",
+        "tooltip": "Checkpoint Loader 등의 원본 CLIP입니다. 이 노드의 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결하세요."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "CLIP",
+        "tooltip": "토큰 호출 관측만 추가된 CLIP입니다. 긍정·부정 Text Encode 양쪽에 연결하세요."
+      },
+      "1": {
+        "name": "프롬프트 추적",
+        "tooltip": "Sampling Trace Model의 프롬프트 추적 입력에 연결하면 실제 토큰 기록이 같은 Run에 저장됩니다."
+      }
+    }
+  },
+  "ComfyTraceModel": {
+    "display_name": "샘플링 추적 모델",
+    "description": "최종 모델과 첫 샘플러 사이에서 샘플링 스텝, 중간 미리보기, x/x0, Sigma, CFG 및 ControlNet 신호를 기록하고 추적 실행을 만듭니다.",
+    "inputs": {
+      "model": {
+        "name": "모델",
+        "tooltip": "추적할 최종 MODEL입니다. LoRA, Adapter 등 모델 패치를 모두 적용한 뒤 연결하세요."
+      },
+      "mode": {
+        "name": "추적 모드",
+        "tooltip": "basic은 핵심 스텝과 미리보기를 기록합니다. advanced는 x/x0, CFG, ControlNet 및 추가 텐서 통계를 함께 기록합니다."
+      },
+      "label": {
+        "name": "실행 이름",
+        "tooltip": "Runs 목록에서 실행을 구분하기 위한 선택 이름입니다. 비워 두면 워크플로 이름 또는 실행 ID를 사용합니다."
+      },
+      "preview_every": {
+        "name": "미리보기 간격",
+        "tooltip": "몇 스텝마다 중간 미리보기를 저장할지 정합니다. 1은 모든 스텝, 2는 두 스텝마다 저장합니다. 스텝 수치 기록은 계속 유지됩니다."
+      },
+      "preview_max_side": {
+        "name": "미리보기 최대 변",
+        "tooltip": "저장할 중간 미리보기의 가장 긴 변을 제한합니다. 값이 클수록 선명하지만 저장 용량과 디코딩 부하가 늘어납니다."
+      },
+      "preview_format": {
+        "name": "미리보기 형식",
+        "tooltip": "JPEG는 용량이 작고 PNG는 무손실이지만 저장 용량이 더 큽니다."
+      },
+      "preview_quality": {
+        "name": "미리보기 품질",
+        "tooltip": "JPEG 저장 품질입니다. PNG를 선택한 경우에는 영향이 없습니다."
+      },
+      "persist_previews": {
+        "name": "미리보기 저장",
+        "tooltip": "중간 미리보기 파일을 Run 폴더에 보존합니다. 끄면 디스크 사용량이 줄지만 나중에 단계별 이미지를 볼 수 없습니다."
+      },
+      "persist_tensor_stats": {
+        "name": "텐서 통계 저장",
+        "tooltip": "x/x0, CFG, ControlNet 등 단계별 수치 통계를 저장합니다. 상세 분석과 A/B 비교에는 켜는 것을 권장합니다."
+      },
+      "preview_decoder": {
+        "name": "미리보기 디코더",
+        "tooltip": "clear는 모델별 TAESD를 우선 사용해 선명하게 표시하고, fast는 빠른 Latent2RGB 미리보기를 사용합니다. 최종 생성 이미지에는 영향을 주지 않습니다."
+      },
+      "clip": {
+        "name": "토큰 조회용 CLIP (호환)",
+        "tooltip": "이전 방식 호환 입력입니다. 새 워크플로는 Sampling Trace CLIP의 프롬프트 추적 출력을 연결하세요. 이 입력은 실제 호출이 아니라 표준 프롬프트 원문을 다시 토큰화합니다."
+      },
+      "prompt_trace": {
+        "name": "프롬프트 추적",
+        "tooltip": "Sampling Trace CLIP의 prompt_trace 출력을 연결합니다. 실제 긍정·부정 토큰화 호출을 같은 Run에 저장합니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "모델",
+        "tooltip": "추적 기능이 부착된 MODEL입니다. 첫 샘플러에 연결하세요."
+      },
+      "1": {
+        "name": "추적 세션",
+        "tooltip": "메모, 검사 노드, 내보내기를 같은 Run에 연결하는 선택 세션입니다."
+      }
+    }
+  },
+  "ComfyTraceExport": {
+    "display_name": "샘플링 추적 내보내기 / 마무리",
+    "description": "연결된 추적 실행을 마무리하고 보고서 파일이 저장된 Run 폴더 경로를 출력합니다.",
+    "inputs": {
+      "trace_session": {
+        "name": "추적 세션",
+        "tooltip": "샘플링 추적 모델의 trace_session 출력을 연결하세요."
+      },
+      "status": {
+        "name": "마무리 상태",
+        "tooltip": "success는 정상 완료, interrupted는 중단, error는 오류 종료로 기록합니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "보고서 폴더",
+        "tooltip": "run.json, steps.jsonl, probes.jsonl 및 생성된 보고서가 들어 있는 폴더 경로입니다."
+      }
+    }
+  },
+  "ComfyTraceNote": {
+    "display_name": "샘플링 추적 메모",
+    "description": "워크플로 실행 중 관찰, 가설, 결정 또는 문제 메모를 연결된 Run에 기록합니다.",
+    "inputs": {
+      "trace_session": {
+        "name": "추적 세션",
+        "tooltip": "메모를 저장할 샘플링 추적 모델의 trace_session을 연결하세요."
+      },
+      "note": {
+        "name": "메모",
+        "tooltip": "실행과 함께 남길 관찰 내용이나 판단을 입력합니다."
+      },
+      "category": {
+        "name": "메모 분류",
+        "tooltip": "observation=관찰, hypothesis=가설, decision=결정, issue=문제입니다. 저장값은 워크플로 호환을 위해 영문을 유지합니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "추적 세션",
+        "tooltip": "같은 세션을 다음 메모 또는 내보내기 노드로 이어줍니다."
+      }
+    }
+  },
+  "ComfyTraceImage": {
+    "display_name": "샘플링 추적 이미지 검사",
+    "description": "IMAGE의 크기, 자료형, 범위와 통계를 기록하고 이미지는 변경 없이 통과시킵니다.",
+    "inputs": {
+      "image": { "name": "이미지", "tooltip": "검사할 IMAGE입니다." },
+      "label": { "name": "검사 이름", "tooltip": "패널과 기록에서 이 검사 지점을 구분할 이름입니다." },
+      "trace_session": { "name": "추적 세션", "tooltip": "연결하면 이 검사 결과를 해당 Run에 저장합니다. 연결하지 않으면 실시간 이벤트만 보냅니다." }
+    },
+    "outputs": {
+      "0": { "name": "이미지", "tooltip": "입력과 동일한 IMAGE입니다." }
+    }
+  },
+  "ComfyTraceLatent": {
+    "display_name": "샘플링 추적 잠재값 검사",
+    "description": "LATENT의 키, 크기, 범위와 통계를 기록하고 잠재값은 변경 없이 통과시킵니다.",
+    "inputs": {
+      "latent": { "name": "잠재값", "tooltip": "검사할 LATENT입니다. 샘플러 전후나 잠재 처리 노드 사이에 배치할 수 있습니다." },
+      "label": { "name": "검사 이름", "tooltip": "패널과 기록에서 이 검사 지점을 구분할 이름입니다." },
+      "trace_session": { "name": "추적 세션", "tooltip": "연결하면 이 검사 결과를 해당 Run에 저장합니다." }
+    },
+    "outputs": {
+      "0": { "name": "잠재값", "tooltip": "입력과 동일한 LATENT입니다." }
+    }
+  },
+  "ComfyTraceMask": {
+    "display_name": "샘플링 추적 마스크 검사",
+    "description": "MASK의 크기, 범위와 통계를 기록하고 마스크는 변경 없이 통과시킵니다.",
+    "inputs": {
+      "mask": { "name": "마스크", "tooltip": "검사할 MASK입니다. 인페인트나 디테일러의 마스크 연결선에 배치할 수 있습니다." },
+      "label": { "name": "검사 이름", "tooltip": "패널과 기록에서 이 검사 지점을 구분할 이름입니다." },
+      "trace_session": { "name": "추적 세션", "tooltip": "연결하면 이 검사 결과를 해당 Run에 저장합니다." }
+    },
+    "outputs": {
+      "0": { "name": "마스크", "tooltip": "입력과 동일한 MASK입니다." }
+    }
+  },
+  "ComfyTraceConditioning": {
+    "display_name": "샘플링 추적 조건 검사",
+    "description": "Prompt와 ControlNet CONDITIONING의 텐서 및 메타데이터를 기록하고 조건은 변경 없이 통과시킵니다.",
+    "inputs": {
+      "conditioning": { "name": "조건", "tooltip": "검사할 CONDITIONING입니다. Positive, Negative 또는 ControlNet 적용 뒤에 배치할 수 있습니다." },
+      "label": { "name": "검사 이름", "tooltip": "패널과 기록에서 이 검사 지점을 구분할 이름입니다." },
+      "trace_session": { "name": "추적 세션", "tooltip": "연결하면 이 검사 결과를 해당 Run에 저장합니다." }
+    },
+    "outputs": {
+      "0": { "name": "조건", "tooltip": "입력과 동일한 CONDITIONING입니다." }
+    }
+  },
+  "ComfyTraceModelSnapshot": {
+    "display_name": "샘플링 추적 모델 상태 기록",
+    "description": "해당 지점까지 적용된 LoRA, Adapter 등 MODEL 패치 상태를 기록하고 모델은 변경 없이 통과시킵니다. 이 노드만으로 샘플링 추적은 시작되지 않습니다.",
+    "inputs": {
+      "model": { "name": "모델", "tooltip": "현재 패치 상태를 기록할 MODEL입니다." },
+      "label": { "name": "기록 이름", "tooltip": "어느 패치 단계인지 구분할 이름입니다." },
+      "trace_session": { "name": "추적 세션", "tooltip": "연결하면 모델 상태 기록을 해당 Run에 저장합니다." }
+    },
+    "outputs": {
+      "0": { "name": "모델", "tooltip": "입력과 동일한 MODEL입니다." }
+    }
+  }
+}

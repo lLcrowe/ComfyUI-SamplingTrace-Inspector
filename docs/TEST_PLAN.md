@@ -1,4 +1,4 @@
-# ComfyUI SamplingTrace Inspector — Test Plan
+# ComfyUI Sampling Trace Inspector — Test Plan
 
 ## 1. 테스트 원칙
 
@@ -54,7 +54,7 @@ ComfyUI 시작 후:
 
 ### 통과 조건
 - `Trace Model` 검색 가능
-- `SamplingTrace Inspector` panel 표시
+- `Sampling Trace Inspector` panel 표시
 - route `/trace-inspector/health`가 `ok=true`
 
 ---
@@ -66,7 +66,8 @@ ComfyUI 시작 후:
 ```text
 Checkpoint Loader
   MODEL → Trace Model → KSampler
-  CLIP  → Text Encode ± → KSampler
+  CLIP  → Sampling Trace CLIP → Positive / Negative Text Encode → KSampler
+                      prompt_trace → Trace Model
   VAE   ← KSampler Latent → VAE Decode → Save Image
 ```
 
@@ -77,6 +78,13 @@ Checkpoint Loader
 - Advanced
 - preview_every=1
 
+실서버 단일 모드 검증은 metadata-free cold 서버에서 다음 스크립트를 Off/On 각각 실행합니다.
+
+```powershell
+python scripts/validate_prompt_capture_live.py --mode off --output-prefix TraceInspectorValidation/prompt_capture_off
+python scripts/validate_prompt_capture_live.py --mode on --output-prefix TraceInspectorValidation/prompt_capture_on
+```
+
 ### 확인
 - 기존 live Preview 표시
 - run 폴더 생성
@@ -85,11 +93,16 @@ Checkpoint Loader
 - Sigma 감소
 - x/x0 shape 정상
 - CFG event 존재
+- `run.json.promptTokenization.status=captured`
+- 표준·커스텀 sampler의 Positive/Negative 역할과 실제 CLIP-L/CLIP-G token ID·weight가 직접 tokenizer 반환 객체와 동일
+- Trace CLIP 전후 `tokenize()` 반환 객체 identity/equality와 Conditioning 결과가 보존됨
+- 패널의 Text Prompt & Tokens에서 원문·encoder·token 선택·원시 token 접기 표시
 
 ### 통과 조건
 - 최종 이미지 생성 성공
 - report.md/html 열림
 - panel slider 작동
+- prompt token 구역의 빈 상태·CLIP 미연결 안내·실제 capture 상태가 구분됨
 
 ---
 

@@ -41,11 +41,11 @@ def json_safe(value: Any, *, max_depth: int = 8, _depth: int = 0) -> Any:
     return f"<{type(value).__module__}.{type(value).__name__}>"
 
 
-def atomic_write_json(path: Path, payload: Any) -> None:
+def atomic_write_json(path: Path, payload: Any, *, max_depth: int = 8) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(
-        json.dumps(json_safe(payload), ensure_ascii=False, indent=2),
+        json.dumps(json_safe(payload, max_depth=max_depth), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     tmp.replace(path)
