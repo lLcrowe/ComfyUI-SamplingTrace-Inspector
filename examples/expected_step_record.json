@@ -1,0 +1,36 @@
+{
+  "runId": "uuid",
+  "segmentIndex": 0,
+  "step": 12,
+  "totalSteps": 30,
+  "sigma": 4.812,
+  "timestamp": "2026-08-12T00:00:00+00:00",
+  "x": {
+    "kind": "tensor",
+    "shape": [1, 4, 128, 128],
+    "dtype": "float16",
+    "device": "cuda:0",
+    "mean": 0.02,
+    "std": 0.88
+  },
+  "x0": {
+    "kind": "tensor",
+    "shape": [1, 4, 128, 128],
+    "dtype": "float16",
+    "device": "cuda:0",
+    "mean": 0.01,
+    "std": 0.73
+  },
+  "cfg": {
+    "eventCount": 1,
+    "condScale": 6.5,
+    "deltaMeanAbs": 0.62
+  },
+  "control": {
+    "active": true,
+    "eventCount": 2,
+    "weightedMeanAbs": 0.41
+  },
+  "previewFile": "segment_00_step_0012.jpg",
+  "previewChange": 0.08
+}

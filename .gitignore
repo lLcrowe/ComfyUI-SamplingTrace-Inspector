@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+data/
+*.log
+.DS_Store
+
+# Local installation inventory (may contain paths/repository metadata)
+docs/CUSTOM_NODE_INVENTORY.json
+docs/CUSTOM_NODE_INVENTORY.md
+docs/TRACE_COMPATIBILITY_MATRIX.md
+docs/ADAPTER_PRIORITY.md
+docs/LOCAL_ADAPTER_PLAN.md
+docs/WORKFLOW_USAGE_INVENTORY.json
+docs/WORKFLOW_USAGE_INVENTORY.md
+docs/LOCAL_ADAPTER_PLAN_FROM_USAGE.md
+docs/CUSTOM_NODE_RUNTIME_PATHS.md
+docs/USER_DECISION_QUEUE.md

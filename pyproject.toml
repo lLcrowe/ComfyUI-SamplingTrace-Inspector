@@ -1,0 +1,23 @@
+[project]
+name = "comfyui-trace-inspector"
+version = "0.4.0b1"
+description = "Preview-driven execution and sampling trace inspector for ComfyUI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "ComfyUI Trace Inspector contributors" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/lLcrowe/ComfyUI-Trace-Inspector"
+Issues = "https://github.com/lLcrowe/ComfyUI-Trace-Inspector/issues"
+
+[tool.comfy]
+PublisherId = "local-rnd"
+DisplayName = "ComfyUI Trace Inspector"
+Icon = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

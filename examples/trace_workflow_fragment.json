@@ -1,0 +1,23 @@
+{
+  "100": {
+    "class_type": "ComfyTraceModel",
+    "inputs": {
+      "model": ["<UPSTREAM_MODEL_NODE>", 0],
+      "mode": "advanced",
+      "label": "controlnet-baseline",
+      "preview_every": 1,
+      "preview_max_side": 768,
+      "preview_format": "JPEG",
+      "preview_quality": 85,
+      "persist_previews": true,
+      "persist_tensor_stats": true
+    }
+  },
+  "101": {
+    "class_type": "ComfyTraceExport",
+    "inputs": {
+      "trace_session": ["100", 1],
+      "status": "success"
+    }
+  }
+}
