@@ -2,7 +2,7 @@
 
 ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **노드 실행 흐름**, **Sampling Step (샘플링 단계)**, **Latent (잠재 표현 / 압축된 이미지 정보)**, **x0 (현재 예상 완성 Latent)**, **Sigma (현재 노이즈 강도)**, **CFG (조건 반영 강도)**, **ControlNet residual (제어 잔차)**을 한 타임라인에서 관찰하는 커스텀 노드 패키지입니다.
 
-> 현재 상태: **0.4.0b1 비공개 베타 후보**. 실제 ComfyUI 설치본에서 최소 KSampler, Trace On/Off 결과 불변성, ControlNet, IPAdapter 계열, A/B 보고서, 동시 prompt 연결, 성능 예산을 검증했습니다. 새 ComfyUI 설치본과 외부 첫 사용자의 Quick Start 완주는 아직 별도 검증 항목입니다. 상세 근거는 `docs/LOCAL_VALIDATION.md`와 `docs/BUILD_VALIDATION.md`를 봅니다.
+> 현재 상태: **0.4.0b1 비공개 베타 후보**. 기존 설치본의 기능 경로에 더해, 비공개 저장소에서 새로 복제한 배포본을 별도 ComfyUI·사용자·출력 환경에서 내부 수용 테스트했습니다. 이 작업 머신 밖의 clean install과 외부 첫 사용자의 Quick Start 완주는 아직 별도 검증 항목입니다. 상세 근거는 `docs/LOCAL_VALIDATION.md`와 `docs/BUILD_VALIDATION.md`를 봅니다.
 
 ---
 

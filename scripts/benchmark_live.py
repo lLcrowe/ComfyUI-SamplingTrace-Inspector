@@ -174,13 +174,14 @@ def history_duration_ms(entry: dict[str, Any]) -> int | None:
     return end - start if start is not None and end is not None else None
 
 
-def output_path(comfy_root: Path, entry: dict[str, Any]) -> Path:
+def output_path(comfy_root: Path, entry: dict[str, Any], output_root: Path | None = None) -> Path:
     for output in entry.get("outputs", {}).values():
         images = output.get("images", []) if isinstance(output, dict) else []
         if not images:
             continue
         image = images[0]
-        root = comfy_root / ("output" if image.get("type") == "output" else image.get("type", "output"))
+        image_type = image.get("type", "output")
+        root = output_root if image_type == "output" and output_root is not None else comfy_root / image_type
         return root / image.get("subfolder", "") / image["filename"]
     raise RuntimeError("Prompt history has no output image")
 
@@ -214,6 +215,7 @@ def run_one(
     *,
     base_url: str,
     comfy_root: Path,
+    output_root: Path | None,
     trace_root: Path,
     memory: MemorySampler,
     mode: str,
@@ -238,7 +240,7 @@ def run_one(
     entry = wait_history(base_url, prompt_id)
     client_wall_ms = (time.perf_counter() - started) * 1000
     _minimum, peak = memory.finish()
-    path = output_path(comfy_root, entry)
+    path = output_path(comfy_root, entry, output_root)
     hashes = image_hashes(path)
     run = find_run(base_url, prompt_id) if mode != "off" else None
     run_dir = trace_root / run["runId"] if run else None
@@ -302,6 +304,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark live ComfyUI Trace Inspector modes.")
     parser.add_argument("--url", default="http://127.0.0.1:8888")
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--output-root", type=Path, default=None)
     args = parser.parse_args()
     comfy_root = Path(__file__).resolve().parents[3]
     trace_root = Path(request_json(args.url, "/trace-inspector/health")["baseDirectory"])
@@ -314,6 +317,7 @@ def main() -> int:
         warmup = run_one(
                 base_url=args.url,
                 comfy_root=comfy_root,
+                output_root=args.output_root,
                 trace_root=trace_root,
                 memory=memory,
                 mode="off",
@@ -332,6 +336,7 @@ def main() -> int:
                 row = run_one(
                     base_url=args.url,
                     comfy_root=comfy_root,
+                    output_root=args.output_root,
                     trace_root=trace_root,
                     memory=memory,
                     mode=mode,

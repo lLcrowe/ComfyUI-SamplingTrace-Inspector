@@ -2,7 +2,7 @@
 
 ## Status
 
-`LOCAL PASS` — 실제 설치본에서 Plugin import, Bottom panel, 최소 KSampler, Trace On/Off 무간섭, Depth·OpenPose ControlNet, P1 Adapter 3종, A/B Compare·Report·동시 prompt 연결, 성능 예산까지 통과했습니다. 공개 베타는 clean install과 외부 첫 사용자 검증이 별도입니다.
+`FEATURE-PATH PASS / PACKAGED INTERNAL ACCEPTANCE PASS` — 기존 실제 설치본에서 Plugin import, Bottom panel, 최소 KSampler, Trace On/Off 무간섭, Depth·OpenPose ControlNet, P1 Adapter 3종, A/B Compare·Report·동시 prompt 연결, 성능 예산을 확인했습니다. 비공개 저장소 fresh clone도 격리 ComfyUI에서 설치·실제 생성·UI/API·재시작 수용 테스트를 통과했습니다. 외부 clean install과 첫 사용자 검증은 별도입니다.
 
 ## Environment
 
@@ -98,6 +98,17 @@ Conditions: WAI Illustrious v17, 512×512, Euler/normal, 8 steps, CFG 5.0, warmu
 - Change: AST 선언·심볼·실제 호출 기반 분류, 보조 경로 기본 제외, sampler 설정/실행 분리, UTF-8 BOM 처리, parse-error summary 추가
 - Test: 당시 Inventory 회귀 `17 passed`; 당시 전체 package tests `33 passed`; 실제 설치본 `36 packages`, Priority A `24 → 11`, required `15 → 4`, parse errors `2 → 0`
 
+## Packaged internal acceptance — 2026-08-15 PASS
+
+- 별도 ComfyUI root·user/output/input/temp·port `8891`, Trace Inspector만 allowlist로 로드
+- health·노드 8/8·웹 자산, checksum 75/75, static check, pytest 48 passed
+- health route와 새 실제 Run의 `pluginVersion` 모두 `0.4.0b1`
+- Off·Basic·Advanced standard·Advanced influence decoded RGBA 동일
+- browser-linked Run: 8 steps, frontend events 18, Trace step → original progress `8/8`, status `success`
+- UI Runs/Preview/Workflow/A/B·step interaction·수직 scroll, Notes, compare/report, 400/404, Run delete PASS
+- 서버 재시작 후 Run·steps·frontend events·Markdown/HTML·A/B report·UI 복구 PASS
+- `benchmark_live.py`의 고정 output 경로와 health/Run의 옛 `0.2.0` 버전 결함을 수정하고 회귀 테스트를 추가
+
 ## Remaining
 
 ### Structural
@@ -120,5 +131,5 @@ Conditions: WAI Illustrious v17, 512×512, Euler/normal, 8 steps, CFG 5.0, warmu
 - Readable: Yes
 - Structured: Yes
 - Established: Static inventory + workflow usage + live Plugin/panel + KSampler identity + Depth/OpenPose ControlNet + P1 Adapter 3종 + A/B reports + concurrent prompt linkage
-- Local integration ready: Yes
+- Local integration ready: Yes — current machine and isolated packaged build
 - Public beta ready: No — clean install and an external first-user pass remain

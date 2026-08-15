@@ -1,4 +1,4 @@
-from scripts.benchmark_live import build_graph, summarize
+from scripts.benchmark_live import build_graph, output_path, summarize
 
 
 def test_benchmark_graph_modes_keep_sampling_inputs_fixed():
@@ -46,3 +46,23 @@ def test_benchmark_summary_reports_paired_median_overhead():
 
     assert summary["basic"]["pairedWallMsMedianDeltaVsOff"] == 50.0
     assert summary["basic"]["pairedWallPercentMedianVsOff"] == 5.0
+
+
+def test_output_path_honors_custom_output_root(tmp_path):
+    entry = {
+        "outputs": {
+            "7": {
+                "images": [
+                    {
+                        "filename": "frame.png",
+                        "subfolder": "TraceInspectorValidation",
+                        "type": "output",
+                    }
+                ]
+            }
+        }
+    }
+
+    path = output_path(tmp_path / "ComfyUI", entry, tmp_path / "custom-output")
+
+    assert path == tmp_path / "custom-output" / "TraceInspectorValidation" / "frame.png"

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tomllib
 import types
 from pathlib import Path
+
+from trace_inspector import PLUGIN_VERSION
 
 
 class FakeRoutes:
@@ -36,6 +39,13 @@ class FakePromptServerInstance:
 
     def send_sync(self, event_type, payload):
         self.messages.append((event_type, payload))
+
+
+def test_plugin_version_matches_project_metadata():
+    plugin_root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((plugin_root / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert PLUGIN_VERSION == project["project"]["version"]
 
 
 def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_path: Path):

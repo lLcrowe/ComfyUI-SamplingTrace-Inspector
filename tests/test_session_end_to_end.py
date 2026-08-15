@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 from PIL import Image
 
+from trace_inspector import PLUGIN_VERSION
 from trace_inspector.config import TraceOptions
 from trace_inspector.session import TraceSession
 from trace_inspector.store import TraceStore
@@ -80,6 +81,7 @@ def test_session_persists_complete_run(monkeypatch, tmp_path: Path):
     run = store.get_run(session.run_id, include_steps=True)
     assert run is not None
     assert run["status"] == "success"
+    assert run["pluginVersion"] == PLUGIN_VERSION
     assert run["promptId"] == "prompt-e2e"
     assert run["stepCount"] == 2
     assert len(run["steps"]) == 2

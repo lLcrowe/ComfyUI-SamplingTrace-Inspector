@@ -10,6 +10,7 @@ from typing import Any
 
 from PIL import Image
 
+from . import PLUGIN_VERSION, TRACE_SCHEMA_VERSION
 from .config import TraceOptions
 from .events import emit
 from .model_snapshot import snapshot_model_patcher
@@ -221,8 +222,8 @@ class TraceSession:
     def to_run_payload(self) -> dict[str, Any]:
         with self._lock:
             return {
-                "schemaVersion": 1,
-                "pluginVersion": "0.2.0",
+                "schemaVersion": TRACE_SCHEMA_VERSION,
+                "pluginVersion": PLUGIN_VERSION,
                 "runId": self.run_id,
                 "nodeId": self.node_id,
                 "promptId": self.prompt_id,

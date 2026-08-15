@@ -4,6 +4,7 @@ import logging
 import uuid
 from typing import Any
 
+from . import PLUGIN_VERSION
 from .json_utils import json_safe
 from .session import utc_now
 from .store import STORE
@@ -35,7 +36,7 @@ def register_routes() -> bool:
         return web.json_response(
             {
                 "ok": True,
-                "version": "0.2.0",
+                "version": PLUGIN_VERSION,
                 "baseDirectory": str(STORE.base_directory),
             }
         )

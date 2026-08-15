@@ -17,10 +17,13 @@
 - Added a read-only workflow usage scanner for saved JSON, PNG structural metadata, embedded/subgraph workflows, and localhost ComfyUI history.
 - Separated usage state from trace priority and kept unobserved packages as `UNKNOWN`.
 - Added usage-based adapter planning, four-package runtime source review, and a user decision queue.
-- Kept performance validation pending after the KSampler, ControlNet, P1 Adapter, and A/B report runtime gates passed.
+- Completed the local performance baseline after the KSampler, ControlNet, P1 Adapter, and A/B report runtime gates passed.
 - Kept local workflow inventories out of the release archive without making the packaged static check fail.
 - Connected private-beta installation and issue reporting to the private GitHub repository.
 - Fixed repository text checkouts to LF so packaged source checksums stay portable across Windows clones.
+- Added custom output-root support to the live benchmark so isolated ComfyUI output directories are verified correctly.
+- Unified the health and persisted Run plugin version with the `pyproject.toml` version (`0.4.0b1`).
+- Passed packaged-build internal acceptance in an isolated ComfyUI root: install, plugin-only boot, actual sampling, UI, notes, compare/report, error responses, deletion, and restart persistence.
 
 ## 0.3.0 — Static inventory precision
 

@@ -2,7 +2,7 @@
 
 ## 판정
 
-현재 패키지는 **독립 정적 검사와 실제 로컬 ComfyUI 통합 게이트를 통과한 공개 베타 후보**입니다. 표준 KSampler 무간섭, ControlNet, P1 Adapter 3종, A/B reports, 동시 prompt 연결, N=3 성능 기준선을 실제 서버에서 확인했습니다. Clean install과 외부 첫 사용자 Quick Start는 아직 수행하지 않았습니다.
+현재 패키지는 **0.4.0b1 비공개 베타 후보**입니다. 독립 정적 검사와 기존 로컬 ComfyUI의 주요 기능 경로에 더해, 비공개 저장소 fresh clone을 별도 ComfyUI root·사용자·출력·포트에서 내부 수용 테스트했습니다. 이 결과는 현재 머신의 비공개 후보 증거이며, 외부 clean install이나 공개 베타 준비 완료를 뜻하지 않습니다.
 
 ---
 
@@ -35,7 +35,7 @@ python scripts/scan_custom_nodes.py --custom-nodes <synthetic fixture> --output-
 Static check: PASS
 Python compile: PASS
 JavaScript syntax: PASS
-Pytest: 46 passed
+Pytest: 48 passed
 Custom Node Inventory CLI smoke: PASS
 Workflow Usage Inventory tests/CLI: PASS
 ComfyUI embedded Python integration smoke: PASS (separate process; live server unchanged)
@@ -156,6 +156,26 @@ Trace priority: P1 3 / P2 6 / P3 12 / P5 15
 
 ---
 
+## Packaged-build internal acceptance
+
+비공개 저장소의 패키지를 추적 대상 외부의 새 ComfyUI clone에 설치하고, 별도 user/output/input/temp 디렉터리와 포트 `8891`에서 검사했습니다. 임베디드 Python의 기존 ComfyUI 경로가 섞인 첫 두 부팅은 격리 증거에서 폐기했고, `--base-directory`와 Custom Node allowlist로 Trace Inspector만 로드된 세 번째 부팅부터 채택했습니다.
+
+- package source: private repository fresh clone; plugin-only Custom Node import
+- boot: health route, 8/8 Trace nodes, JavaScript/CSS assets HTTP 200
+- package: checksum `75/75`, static check PASS, pytest `48 passed`
+- version diagnostics: health route and a newly persisted live Run both report `0.4.0b1`
+- sampling: WAI Illustrious v17, 512², Euler/normal, 8 steps, CFG 5.0, seed `2608151001`
+- identity: Off·Basic·Advanced standard·Advanced influence decoded RGBA SHA-256 all `05C031D6...F38D1`
+- callback/frontend: Trace step persisted before original progress `8/8`; browser-linked Run stored 18 frontend events and completed as `success`
+- UI: Runs/Preview/Workflow/Visual A/B rendered; step 1/8 selection and A/B pair interaction PASS; vertical body scroll `662 → 1292`, `overflow-y: scroll`
+- storage/API: note create/edit/delete, UI note add, 8-step compare, Markdown/HTML HTTP 200, expected 400/404 responses, isolated Run deletion PASS
+- restart: 5 Runs, 8 steps, 18 frontend events, base reports and A/B reports restored; UI reloaded without Trace Inspector console errors
+- regressions found and fixed: `benchmark_live.py` assumed `<ComfyUI>/output`; `--output-root` now covers custom output directories. Health and persisted Runs also used stale `0.2.0`; both now share the `0.4.0b1` package version constant.
+
+The isolated server was stopped after verification. The original ComfyUI process and queue remained unchanged at `0/0`.
+
+---
+
 ## 공개 베타 전에 남은 검증
 
 1. 이 작업 머신 밖의 clean ComfyUI 설치·제거·재설치
@@ -175,6 +195,7 @@ Simulated Runtime Integration: Passed
 Actual Custom Node Inventory: Generated; workflow usage review complete
 Actual Workflow Usage Inventory: Generated; user-only state decisions pending
 Actual ComfyUI Integration: Passed (022-1~10)
-Local Production Ready: Yes
+Packaged-build Internal Acceptance: Passed
+Local Production Ready: No — evidence is still limited to the current machine
 Public Beta Ready: No — clean install / external first user pending
 ```
