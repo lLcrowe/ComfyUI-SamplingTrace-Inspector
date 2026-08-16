@@ -57,12 +57,13 @@ class ComfyTraceClip:
         }
 
     RETURN_TYPES = ("CLIP", "PROMPT_TRACE")
-    RETURN_NAMES = ("clip", "prompt_trace")
+    # Output links are index-based, so these visible labels remain workflow-compatible.
+    RETURN_NAMES = ("② positive + negative", "③ Trace Model")
     FUNCTION = "attach"
     CATEGORY = "Sampling Trace Inspector"
     DESCRIPTION = (
-        "Pass CLIP through unchanged while recording the actual Positive/Negative prompt tokenization calls. "
-        "Connect prompt_trace to Sampling Trace Model to save them in the same Run."
+        "Connect Checkpoint CLIP here, then fan the CLIP output out to both Positive and Negative Text Encode nodes. "
+        "Connect prompt_trace to Sampling Trace Model. The original CLIP values pass through unchanged."
     )
 
     @classmethod
@@ -424,7 +425,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ComfyTraceClip": "Sampling Trace CLIP",
+    "ComfyTraceClip": "Sampling Trace CLIP · Connect Both Prompts",
     "ComfyTraceModel": "Sampling Trace Model",
     "ComfyTraceExport": "Sampling Trace Export / Finalize",
     "ComfyTraceNote": "Sampling Trace Note",

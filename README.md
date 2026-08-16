@@ -147,8 +147,10 @@ Trace Note
 
 ```text
 [Checkpoint Loader]
-       CLIP ──→ [Sampling Trace CLIP] ──→ Positive / Negative Text Encode
-                         └── PROMPT_TRACE ───────────────┐
+  ① CLIP ──→ [Sampling Trace CLIP · Connect Both Prompts]
+                   ② CLIP ──┬──→ Positive Text Encode
+                            └──→ Negative Text Encode
+                   ③ PROMPT_TRACE ──────────────────────┐
        MODEL                                             │
          ↓                                               │
 [LoRA Loader]

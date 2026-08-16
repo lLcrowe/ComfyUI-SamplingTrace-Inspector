@@ -1,21 +1,21 @@
 {
   "ComfyTraceClip": {
-    "display_name": "샘플링 추적 CLIP",
-    "description": "원본 CLIP을 변경하지 않고 실제 긍정·부정 프롬프트 토큰화 호출을 기록합니다. 하나의 출력을 여러 Text Encode 노드에 연결할 수 있습니다.",
+    "display_name": "샘플링 추적 CLIP · 긍정/부정 양쪽 연결",
+    "description": "① 체크포인트 CLIP을 입력하고 ② 같은 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결한 뒤 ③ 프롬프트 추적을 샘플링 추적 모델에 연결합니다.",
     "inputs": {
       "clip": {
-        "name": "CLIP",
-        "tooltip": "Checkpoint Loader 등의 원본 CLIP입니다. 이 노드의 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결하세요."
+        "name": "① 체크포인트 CLIP 받기",
+        "tooltip": "Checkpoint Loader의 CLIP 출력을 여기에 연결하세요."
       }
     },
     "outputs": {
       "0": {
-        "name": "CLIP",
-        "tooltip": "토큰 호출 관측만 추가된 CLIP입니다. 긍정·부정 Text Encode 양쪽에 연결하세요."
+        "name": "② 긍정·부정에 둘 다 연결",
+        "tooltip": "이 출력 하나에서 선을 두 개 빼서 긍정 Text Encode와 부정 Text Encode의 clip 입력 양쪽에 연결하세요."
       },
       "1": {
-        "name": "프롬프트 추적",
-        "tooltip": "Sampling Trace Model의 프롬프트 추적 입력에 연결하면 실제 토큰 기록이 같은 Run에 저장됩니다."
+        "name": "③ 추적 모델에 연결",
+        "tooltip": "Sampling Trace Model의 ‘③ CLIP 프롬프트 추적’ 입력에 연결하면 실제 토큰 기록이 같은 Run에 저장됩니다."
       }
     }
   },
@@ -64,12 +64,12 @@
         "tooltip": "clear는 모델별 TAESD를 우선 사용해 선명하게 표시하고, fast는 빠른 Latent2RGB 미리보기를 사용합니다. 최종 생성 이미지에는 영향을 주지 않습니다."
       },
       "clip": {
-        "name": "토큰 조회용 CLIP (호환)",
-        "tooltip": "이전 방식 호환 입력입니다. 새 워크플로는 Sampling Trace CLIP의 프롬프트 추적 출력을 연결하세요. 이 입력은 실제 호출이 아니라 표준 프롬프트 원문을 다시 토큰화합니다."
+        "name": "이전 방식 CLIP · 새 연결 금지",
+        "tooltip": "기존 워크플로 호환용입니다. 새 워크플로에서는 사용하지 말고 Sampling Trace CLIP의 ③ 출력을 아래 프롬프트 추적 입력에 연결하세요."
       },
       "prompt_trace": {
-        "name": "프롬프트 추적",
-        "tooltip": "Sampling Trace CLIP의 prompt_trace 출력을 연결합니다. 실제 긍정·부정 토큰화 호출을 같은 Run에 저장합니다."
+        "name": "③ CLIP 프롬프트 추적",
+        "tooltip": "Sampling Trace CLIP의 ‘③ 추적 모델에 연결’ 출력을 여기에 연결합니다. 실제 긍정·부정 토큰화 호출을 같은 Run에 저장합니다."
       }
     },
     "outputs": {

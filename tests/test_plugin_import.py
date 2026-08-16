@@ -73,6 +73,16 @@ def test_korean_locale_covers_every_custom_node():
         assert definition["inputs"]
         assert definition["outputs"]
 
+    clip = node_defs["ComfyTraceClip"]
+    model = node_defs["ComfyTraceModel"]
+    assert "긍정/부정 양쪽 연결" in clip["display_name"]
+    assert clip["inputs"]["clip"]["name"].startswith("①")
+    assert clip["outputs"]["0"]["name"].startswith("②")
+    assert clip["outputs"]["1"]["name"].startswith("③")
+    assert "둘 다 연결" in clip["outputs"]["0"]["name"]
+    assert model["inputs"]["prompt_trace"]["name"].startswith("③")
+    assert "새 연결 금지" in model["inputs"]["clip"]["name"]
+
 
 def test_panel_uses_comfy_locale_and_hides_uncaptured_preview_steps():
     plugin_root = Path(__file__).resolve().parents[1]
@@ -134,6 +144,10 @@ def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_pa
         spec.loader.exec_module(module)
         assert "ComfyTraceModel" in module.NODE_CLASS_MAPPINGS
         assert len(module.NODE_CLASS_MAPPINGS) == 9
+        assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].RETURN_NAMES == (
+            "② positive + negative",
+            "③ Trace Model",
+        )
         assert all(
             getattr(node_class, "DESCRIPTION", "").strip()
             for node_class in module.NODE_CLASS_MAPPINGS.values()
