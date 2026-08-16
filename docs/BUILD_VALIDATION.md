@@ -35,7 +35,7 @@ python scripts/scan_custom_nodes.py --custom-nodes <synthetic fixture> --output-
 Static check: PASS
 Python compile: PASS
 JavaScript syntax: PASS
-Pytest: 48 passed
+Pytest: 74 passed
 Custom Node Inventory CLI smoke: PASS
 Workflow Usage Inventory tests/CLI: PASS
 ComfyUI embedded Python integration smoke: PASS (separate process; live server unchanged)
@@ -44,8 +44,8 @@ Actual installed package scan: 36 packages / 657 static node mappings
 Priority A: 11 (previous scanner: 24)
 Required adapters: 4 (previous scanner: 15)
 Scan errors / parse errors: 0 / 0
-Package checksum entries: 75/75 PASS after current release-candidate update
-Private beta archive: 76 files including `SHA256SUMS.txt`; local inventory, Run data, image/model binaries, and private path/token patterns excluded
+Repository source checksum entries: 84/84 PASS after the current UI and prompt-trace update
+Private beta archive: previous 76-file internal-acceptance archive remains historical; refresh the archive after the next repository push
 Workflow usage scan: 36 packages / 21 observed / 52,723 evidence records / 0 errors
 Trace priority: P1 3 / P2 6 / P3 12 / P5 15
 ```
