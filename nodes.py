@@ -52,13 +52,17 @@ class ComfyTraceClip:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"clip": ("CLIP",)},
+            "required": {
+                "clip": ("CLIP", {"display_name": "① 체크포인트 CLIP"}),
+            },
             "hidden": {"unique_id": "UNIQUE_ID", "prompt": "PROMPT"},
         }
 
     RETURN_TYPES = ("CLIP", "PROMPT_TRACE")
     # Output links are index-based, so these visible labels remain workflow-compatible.
-    RETURN_NAMES = ("② positive + negative", "③ → Trace Model.prompt_trace")
+    # Korean is the compatibility fallback for older frontends that ignore custom
+    # socket i18n. Newer frontends and slot_localization.js switch these per locale.
+    RETURN_NAMES = ("② 긍정·부정 Text Encode", "③ 추적 모델 · 프롬프트 추적")
     FUNCTION = "attach"
     CATEGORY = "Sampling Trace Inspector"
     DESCRIPTION = (
@@ -95,8 +99,14 @@ class ComfyTraceModel:
             },
             "optional": {
                 "preview_decoder": (PREVIEW_DECODERS, {"default": "clear"}),
-                "prompt_trace": ("PROMPT_TRACE",),
-                "clip": ("CLIP",),
+                "prompt_trace": (
+                    "PROMPT_TRACE",
+                    {"display_name": "③ CLIP 프롬프트 추적 받기"},
+                ),
+                "clip": (
+                    "CLIP",
+                    {"display_name": "이전 방식 · 새 연결 금지"},
+                ),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",

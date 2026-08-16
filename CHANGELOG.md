@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Made CLIP wiring self-explanatory with a “connect both prompts” node title, numbered input/output labels, explicit fan-out tooltips, and a clearly deprecated legacy CLIP input on Sampling Trace Model. The third output now names the exact `Sampling Trace Model.prompt_trace` destination so it cannot be confused with the Inspector panel or `trace_session`.
+- Made CLIP wiring self-explanatory with a “connect both prompts” node title, numbered input/output labels, explicit fan-out tooltips, and a clearly deprecated legacy CLIP input on Sampling Trace Model. Canvas slot display names now follow the active Korean/English ComfyUI locale without changing their internal types, indexes, or workflow links; the third output targets `Sampling Trace Model.prompt_trace`, not the Inspector panel or `trace_session`.
 - Added per-step positive/negative sampled cross-attention observation for Advanced runs with tensor statistics enabled.
 - Added blue positive and red negative all-word cards plus an Advanced step-by-word heatmap to the panel; BPE fragments and repeated occurrences are combined into readable words.
 - Relabeled the word analysis around the sampler `positive` and `negative` CONDITIONING sockets, with socket-specific card titles and tooltips.

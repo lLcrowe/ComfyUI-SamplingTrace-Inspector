@@ -78,8 +78,8 @@ def test_korean_locale_covers_every_custom_node():
     assert "긍정/부정 양쪽 연결" in clip["display_name"]
     assert clip["inputs"]["clip"]["name"].startswith("①")
     assert clip["outputs"]["0"]["name"].startswith("②")
-    assert clip["outputs"]["1"]["name"] == "③ → Trace Model.prompt_trace"
-    assert "둘 다 연결" in clip["outputs"]["0"]["name"]
+    assert clip["outputs"]["1"]["name"] == "③ 추적 모델 · 프롬프트 추적"
+    assert clip["outputs"]["0"]["name"] == "② 긍정·부정 Text Encode"
     assert model["inputs"]["prompt_trace"]["name"].startswith("③")
     assert "새 연결 금지" in model["inputs"]["clip"]["name"]
 
@@ -121,6 +121,27 @@ def test_panel_uses_comfy_locale_and_hides_uncaptured_preview_steps():
     assert 'localeText("입력 프롬프트·CLIP 토큰 상세"' not in panel_script
 
 
+def test_trace_socket_names_follow_comfy_locale_without_changing_input_keys():
+    plugin_root = Path(__file__).resolve().parents[1]
+    localization_script = (plugin_root / "web" / "slot_localization.js").read_text(encoding="utf-8")
+
+    assert "function applyLocalizedTraceSlotNames(node)" in localization_script
+    assert "function traceNodeClass(node)" in localization_script
+    assert "node?.comfyClass || node?.type || node?.constructor?.nodeData?.name" in localization_script
+    assert 'nodeClass === "ComfyTraceClip"' in localization_script
+    assert 'localeText("① 체크포인트 CLIP", "① Checkpoint CLIP")' in localization_script
+    assert 'localeText("② 긍정·부정 Text Encode", "② Positive + Negative Text Encode")' in localization_script
+    assert 'localeText("③ 추적 모델 · 프롬프트 추적", "③ Trace Model · Prompt Trace")' in localization_script
+    assert 'setSlotDisplayName(output, outputNames[index], { rename: true })' in localization_script
+    assert 'prompt_trace: localeText("③ CLIP 프롬프트 추적 받기", "③ Receive CLIP Prompt Trace")' in localization_script
+    assert "function installLocalizedTraceSlotLifecycle(nodeType)" in localization_script
+    assert 'for (const methodName of ["onAdded", "onConfigure"])' in localization_script
+    assert "async beforeRegisterNodeDef(nodeType, nodeData)" in localization_script
+    assert "afterConfigureGraph()" in localization_script
+    assert "async nodeCreated(node)" in localization_script
+    assert "loadedGraphNode(node)" in localization_script
+
+
 def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_path: Path):
     plugin_root = Path(__file__).resolve().parents[1]
     fake_server = types.ModuleType("server")
@@ -145,9 +166,15 @@ def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_pa
         assert "ComfyTraceModel" in module.NODE_CLASS_MAPPINGS
         assert len(module.NODE_CLASS_MAPPINGS) == 9
         assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].RETURN_NAMES == (
-            "② positive + negative",
-            "③ → Trace Model.prompt_trace",
+            "② 긍정·부정 Text Encode",
+            "③ 추적 모델 · 프롬프트 추적",
         )
+        assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].INPUT_TYPES()["required"]["clip"][1][
+            "display_name"
+        ] == "① 체크포인트 CLIP"
+        assert module.NODE_CLASS_MAPPINGS["ComfyTraceModel"].INPUT_TYPES()["optional"]["prompt_trace"][1][
+            "display_name"
+        ] == "③ CLIP 프롬프트 추적 받기"
         assert all(
             getattr(node_class, "DESCRIPTION", "").strip()
             for node_class in module.NODE_CLASS_MAPPINGS.values()
