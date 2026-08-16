@@ -175,7 +175,7 @@ Trace Note
 | Mode | 기록 | 비용 | 용도 |
 |---|---|---:|---|
 | **Basic** | Step, Preview, shape/dtype/device, 노드 Timeline | 낮음 | 전체 흐름 확인 |
-| **Advanced** | Basic + CFG delta + Control 구조. `persist_tensor_stats=true`이면 x/x0·CFG 상세·Control residual 통계까지 캡처 | 중간~높음 | 일반 튜닝 및 ControlNet/커스텀 노드 R&D |
+| **Advanced** | Basic + CFG delta + Control 구조. `persist_tensor_stats=true`이면 x/x0·CFG 상세·Control residual과 샘플러 positive/negative 조건의 단계별 단어 주의까지 캡처 | 중간~높음 | 일반 튜닝 및 ControlNet/프롬프트/커스텀 노드 R&D |
 
 처음에는 `Basic`, 내부 영향량을 볼 때는 `Advanced`를 권장합니다. 고비용 Tensor 통계가 필요 없으면 `persist_tensor_stats=false`로 끌 수 있습니다. 이전 workflow의 `Deep` 값은 `Advanced`로 자동 호환됩니다.
 
@@ -252,13 +252,16 @@ Trace Preview decoder
 - 실행 시간
 - 오류/중단
 
-### Text Prompt & Tokens
-- 실제 `Sampling Trace CLIP`을 통과한 Text Encode의 호출 원문
+### Sampler Positive / Negative Conditions
 - 표준·커스텀 sampler의 `positive` / `negative` 소켓을 역추적한 역할
-- 실제 호출별 encoder chunk, token ID, 표시 조각, 입력 가중치, word ID
-- 특수 토큰과 padding은 접힌 원시 보기에서 확인
+- `Advanced + persist_tensor_stats=true` 실행의 각 step에서 실제 Q/K로 관측한 positive/negative CONDITIONING 단어별 교차 주의 평균
+- 부분 토큰은 실제 원문과 CLIP 단어 경계에 맞춰 사람이 읽는 단어로 합치고, 같은 단어의 반복 출현은 하나로 합산
+- 상단 이미지 미리보기에서 선택한 step과 자동 연동되는 전체 단어 막대와, 고급 펼침의 읽기 전용 전체 step×단어 흐름. 긴 목록은 내부 세로 스크롤로 확인하며 텍스트 구역에는 별도 step 선택기를 두지 않습니다.
+- `Sampling Trace CLIP`을 한쪽 Text Encode에만 연결한 실행은 반대쪽 주의 수치를 잘못된 단어에 붙이지 않고, 해당 `positive` 또는 `negative` 연결 안내를 표시합니다.
 
-이 구역은 토큰이 어떻게 분할되고 어떤 입력 가중치가 적용됐는지 보여줍니다. Attention, 품질 기여율, 인과 비율은 아직 측정하지 않습니다.
+프롬프트의 token ID와 CONDITIONING 입력은 실행 중 고정되어 있고, latent·sigma가 변하면서 각 단어 위치를 참조하는 교차 주의 비중이 step마다 달라집니다. 단계별 관측은 일부 공간 query를 표본화하고 모든 text key와 cross-attention layer를 평균한 근사 비중입니다. 화면에서는 특수·padding·구두점을 제외하고 부분 토큰과 반복 출현을 단어별로 합산하지만, 특정 단어가 화질을 몇 % 만들었다는 인과적 기여율은 아닙니다. 샘플러 `positive` 조건은 옅은 파랑, `negative` 조건은 옅은 빨강으로 같은 화면에 표시합니다.
+
+실제 호출 원문, encoder chunk, token ID, 부분 조각, 입력 가중치와 특수·padding 토큰은 계산·저장 증거로 보존하되 일반 패널에는 중복 표시하지 않습니다.
 
 ### A/B Compare
 - 실행 A/B 설정 차이

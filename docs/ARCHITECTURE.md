@@ -167,6 +167,18 @@ CFG delta = Conditional prediction - Unconditional prediction
 
 Advanced mode에서 `persist_tensor_stats=true`일 때만 residual 통계를 계산합니다. 이전 workflow의 `Deep` 값은 Advanced로 정규화합니다.
 
+## 5.5 sampled cross-attention observer
+
+Advanced mode에서 `persist_tensor_stats=true`이면 ComfyUI의 `optimized_attention_override`를 합성해 실제 projected Q/K를 읽습니다. 기존 override가 있으면 관측 뒤 기존 override를 호출하고, 없으면 전달받은 원본 attention 함수를 같은 인자로 호출합니다. q/k/v를 수정하거나 대체 출력으로 사용하지 않습니다.
+
+- self-attention처럼 query와 key 길이가 같은 호출은 제외합니다.
+- 표준 text cross-attention의 모든 text key는 유지하고 공간 query는 층당 최대 16개 위치만 균일 간격으로 표본화합니다.
+- `cond_or_uncond`의 `0=positive`, `1=negative`를 분리합니다.
+- 각 layer의 softmax 비중 벡터는 GPU에 작은 detached tensor로 모았다가 step callback에서 한 번 평균·CPU 직렬화합니다.
+- `steps.jsonl.promptInfluence`에 role별 77-token vector, layer count, query sample count를 저장합니다.
+
+이 값은 관측된 평균 교차 주의 비중이며 품질 원인의 인과 비율이 아닙니다. Basic과 `persist_tensor_stats=false`의 Advanced에는 observer를 설치하지 않습니다.
+
 ---
 
 ## 6. Preview pipeline
@@ -207,7 +219,7 @@ Absolute RGB difference mean / 255
 `promptTokenization`은 `Sampling Trace CLIP` proxy를 통과한 실제 `tokenize()` 반환값을 변경 없이 관측해 저장합니다. 실행 context의 Text Encode node ID와 API prompt의 모든 `positive/negative` 명명 소켓을 역추적해 표준·커스텀 sampler 역할을 연결합니다. `PROMPT_TRACE`는 Trace Model의 Run에 캡처를 bind하며, Text Encode가 먼저 실행된 경우에도 메모리 캡처를 bind 시점에 flush합니다. Conditioning을 재생성하지 않고 CLIP 모델 추론도 추가하지 않습니다. 이전 `Trace Model.clip` 직접 입력은 표준 노드 재토큰화 호환 경로로 유지합니다.
 
 ### steps.jsonl
-Step마다 append합니다. 생성이 중단돼도 앞부분이 남습니다.
+Step마다 append합니다. 생성이 중단돼도 앞부분이 남습니다. 고비용 영향 캡처를 켠 Advanced Run은 `promptInfluence`에 긍정·부정 sampled cross-attention vector를 함께 기록합니다.
 
 ### frontend_events.jsonl
 브라우저가 받은 노드 실행 이벤트입니다.

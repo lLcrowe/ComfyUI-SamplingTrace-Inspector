@@ -55,9 +55,6 @@ const state = {
   resizeHandler: null,
   executionNotice: null,
   liveEventsExpanded: false,
-  selectedPromptNodeId: null,
-  selectedPromptCallIndex: 0,
-  selectedTokenKey: null,
 };
 
 function apiUrl(path) {
@@ -313,9 +310,6 @@ async function loadRun(runId, resetStep = true) {
     state.canvasNotice = null;
     if (resetStep) {
       state.selectedStepIndex = Math.max(0, (state.selectedRun.steps?.length || 1) - 1);
-      state.selectedPromptNodeId = null;
-      state.selectedPromptCallIndex = 0;
-      state.selectedTokenKey = null;
     } else {
       state.selectedStepIndex = Math.min(
         state.selectedStepIndex,
@@ -1615,51 +1609,289 @@ function renderCompare(container) {
 
 function promptRoleLabel(role) {
   return ({
-    positive: localeText("긍정", "Positive"),
-    negative: localeText("부정", "Negative"),
+    positive: localeText("샘플러 positive · 긍정 조건", "Sampler positive · positive condition"),
+    negative: localeText("샘플러 negative · 부정 조건", "Sampler negative · negative condition"),
     unknown: localeText("역할 미확인", "Role unknown"),
   })[role] || role;
 }
 
-function encoderLabel(name) {
-  return ({
-    l: "CLIP-L",
-    g: "CLIP-G",
-    clip: "CLIP",
-  })[name] || String(name || "CLIP").toUpperCase();
+function samplerConditionTooltip(role) {
+  return role === "positive"
+    ? localeText(
+      "샘플러 positive 소켓으로 들어온 CONDITIONING의 단어 위치를 현재 스텝의 실제 Q/K 교차 주의로 관측합니다.",
+      "Observes word positions from the CONDITIONING entering the sampler positive socket through the current step's actual Q/K cross-attention.",
+    )
+    : localeText(
+      "샘플러 negative 소켓으로 들어온 CONDITIONING의 단어 위치를 현재 스텝의 실제 Q/K 교차 주의로 관측합니다.",
+      "Observes word positions from the CONDITIONING entering the sampler negative socket through the current step's actual Q/K cross-attention.",
+    );
 }
 
-function tokenKey(callIndex, lane, chunkIndex, tokenIndex) {
-  return `${callIndex}:${lane}:${chunkIndex}:${tokenIndex}`;
+function promptRoleNodeIds(run, role) {
+  const nodes = run?.promptAnalysis?.nodes || [];
+  const byId = new Map(nodes.map((node) => [String(node.id), node]));
+  const resolved = new Set();
+  const visit = (value, visited) => {
+    const link = value?.link;
+    if (!Array.isArray(link) || !link.length) return;
+    const nodeId = String(link[0]);
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    const node = byId.get(nodeId);
+    if (!node) return;
+    resolved.add(nodeId);
+    const inputs = node.inputs || {};
+    if (Object.hasOwn(inputs, "positive") || Object.hasOwn(inputs, "negative")) return;
+    for (const upstream of Object.values(inputs)) visit(upstream, visited);
+  };
+  for (const node of nodes) visit(node.inputs?.[role], new Set());
+  return resolved;
 }
 
-function tokenChipLabel(token) {
-  if (token.special === "start") return "BOS";
-  if (token.special === "end") return "EOS";
-  if (token.special === "padding") return "PAD";
-  if (token.special === "embedding") return localeText("임베딩", "Embedding");
-  const decoded = String(token.decoded || "").replaceAll("\n", "↵").replaceAll("\t", "⇥");
-  if (decoded) return decoded.replace(/^ +/, (spaces) => "␠".repeat(spaces.length));
-  return String(token.piece || token.tokenId || "?");
+function promptWordGroups(run, prompts, role, expectedWeightCount = 0) {
+  const roleNodeIds = promptRoleNodeIds(run, role);
+  const prompt = roleNodeIds.size
+    ? prompts.find((item) => roleNodeIds.has(String(item.nodeId)))
+    : prompts.find((item) => (item.roles || []).includes(role));
+  const call = (prompt?.calls || []).find((item) => !item.internal);
+  if (!call) return [];
+  let encoders = call.encoders || [];
+  if (call.usedEncoders?.length) {
+    encoders = encoders.filter((encoder) => call.usedEncoders.includes(String(encoder.name)));
+  }
+  const matching = encoders.filter((encoder) => !expectedWeightCount || Number(encoder.tokenCount) === expectedWeightCount);
+  const candidates = matching.length ? matching : encoders;
+  const encoder = candidates.find((item) => String(item.name) === "l")
+    || candidates.find((item) => String(item.name) === "g")
+    || candidates[0];
+  if (!encoder) return [];
+
+  const tokens = [];
+  let offset = 0;
+  for (const chunk of encoder.chunks || []) {
+    for (const token of chunk) tokens.push({ token, index: offset + Number(token.index || 0) });
+    offset += chunk.length;
+  }
+  const hasBoundaryMarkers = tokens.some(({ token }) => /<\/w>|^[▁Ġ]/u.test(String(token.piece || "")));
+  const occurrences = [];
+  let current = null;
+  let pendingHyphen = false;
+  const flush = () => {
+    if (!current) return;
+    const label = current.parts.join("").trim();
+    if (/[\p{L}\p{N}]/u.test(label) && current.indices.length) {
+      occurrences.push({ label, indices: [...new Set(current.indices)], count: 1 });
+    }
+    current = null;
+  };
+
+  for (const { token, index } of tokens) {
+    if (["start", "end", "padding"].includes(token.special)) {
+      flush();
+      pendingHyphen = false;
+      continue;
+    }
+    const piece = String(token.piece || token.decoded || "");
+    const startsWord = /^[▁Ġ]/u.test(piece) || /^\s/u.test(String(token.decoded || ""));
+    const continuesWord = /^##/.test(piece);
+    const endsWord = /<\/w>$/.test(piece);
+    const clean = piece
+      .replace(/<\/w>$/g, "")
+      .replace(/^[▁Ġ]+/gu, "")
+      .replace(/^##/, "")
+      .trim();
+    const punctuationOnly = clean && !/[\p{L}\p{N}]/u.test(clean);
+
+    if (punctuationOnly) {
+      flush();
+      pendingHyphen = clean === "-" && occurrences.length > 0;
+      continue;
+    }
+    if (!clean) continue;
+    if (startsWord && !continuesWord) flush();
+    if (token.wordId != null && current?.wordId != null && token.wordId !== current.wordId) flush();
+    if (!current && pendingHyphen && occurrences.length) {
+      current = occurrences.pop();
+      current.parts = [`${current.label}-`];
+      delete current.label;
+      pendingHyphen = false;
+    }
+    if (!current) current = { parts: [], indices: [], wordId: token.wordId ?? null };
+    current.parts.push(clean);
+    current.indices.push(index);
+    if (endsWord || (!hasBoundaryMarkers && !continuesWord)) flush();
+  }
+  flush();
+
+  const sourceWords = String(call.text || "")
+    .replace(/:(?:\d+(?:\.\d+)?|\.\d+)(?=\s*[)\]}])/g, "")
+    .match(/[\p{L}\p{N}]+(?:[-_][\p{L}\p{N}]+)*/gu) || [];
+  const sourceAligned = [];
+  let occurrenceIndex = 0;
+  const comparableWord = (value) => String(value || "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  for (const sourceWord of sourceWords) {
+    const target = comparableWord(sourceWord);
+    if (!target || occurrenceIndex >= occurrences.length) continue;
+    const start = occurrenceIndex;
+    const indices = [];
+    let combined = "";
+    while (occurrenceIndex < occurrences.length) {
+      const next = comparableWord(occurrences[occurrenceIndex].label);
+      if (!next || !target.startsWith(combined + next)) break;
+      combined += next;
+      indices.push(...occurrences[occurrenceIndex].indices);
+      occurrenceIndex += 1;
+      if (combined === target) {
+        sourceAligned.push({ label: sourceWord, indices, count: 1 });
+        break;
+      }
+    }
+    if (combined !== target) occurrenceIndex = start;
+  }
+  if (sourceAligned.length) occurrences.splice(0, occurrences.length, ...sourceAligned);
+
+  const merged = new Map();
+  for (const occurrence of occurrences) {
+    const key = occurrence.label.toLocaleLowerCase();
+    const existing = merged.get(key);
+    if (existing) {
+      existing.indices.push(...occurrence.indices);
+      existing.count += 1;
+    } else {
+      merged.set(key, { ...occurrence });
+    }
+  }
+  return [...merged.values()].map((word) => ({
+    ...word,
+    indices: [...new Set(word.indices)].sort((a, b) => a - b),
+  }));
+}
+
+function promptWordValues(words, role) {
+  return words.map((word) => ({
+    ...word,
+    value: word.indices.reduce((sum, index) => sum + (Number(role?.weights?.[index]) || 0), 0),
+  }));
+}
+
+function renderPromptInfluence(container, run, prompts) {
+  const steps = run.steps || [];
+  const observed = steps.filter((step) => (step.promptInfluence?.layerCount || 0) > 0);
+  const heading = el("div", "cti-influence-heading");
+  heading.append(
+    el("strong", "", localeText("샘플러 조건의 단계별 단어 주의", "Sampler condition word attention by step")),
+    el("span", "cti-section-kicker", localeText("KSampler positive·negative 소켓으로 들어온 조건을 상단 이미지 스텝과 함께 관측", "Observes conditions entering the KSampler positive and negative sockets alongside the selected image step")),
+  );
+  container.append(heading);
+
+  if (!observed.length) {
+    const message = run.options?.mode === "advanced"
+      ? localeText("이 실행에는 교차 주의 관측값이 없습니다. 텐서 통계 저장을 켠 새 고급 실행에서 표준 CLIP 조건 경로를 확인하세요.", "This run has no cross-attention observations. Enable tensor statistics in a new Advanced run with a standard CLIP conditioning path.")
+      : localeText("단계별 프롬프트 주의는 고급 모드에서 기록합니다. 기본 모드는 토큰 분할과 입력 가중치만 보존합니다.", "Per-step prompt attention is captured in Advanced mode. Basic keeps token splitting and input weights only.");
+    container.append(el("div", "cti-inline-notice muted", message));
+    return;
+  }
+
+  const selectedStepIndex = Math.max(0, Math.min(state.selectedStepIndex, steps.length - 1));
+  const selectedStep = steps[selectedStepIndex];
+
+  const cards = el("div", "cti-influence-cards");
+  for (const roleName of ["positive", "negative"]) {
+    const role = selectedStep.promptInfluence?.roles?.[roleName];
+    const words = promptWordGroups(run, prompts, roleName, role?.weights?.length || 0);
+    const card = el("article", `cti-influence-card role-${roleName}`);
+    card.title = samplerConditionTooltip(roleName);
+    card.append(
+      el("strong", "", promptRoleLabel(roleName)),
+      el("span", "cti-section-kicker", localeText(
+        `스텝 ${Number(selectedStep.step || 0) + 1} · 조건 단어 ${words.length}개 · 현재 주의 높은 순`,
+        `Step ${Number(selectedStep.step || 0) + 1} · ${words.length} condition words · highest attention first`,
+      )),
+    );
+    if (!role?.weights?.length) {
+      card.append(el("span", "cti-empty-footnote", localeText("이 역할의 관측값이 없습니다.", "No observation for this role.")));
+      cards.append(card);
+      continue;
+    }
+    if (!words.length) {
+      card.append(el(
+        "div",
+        "cti-inline-notice",
+        localeText(
+          `이 실행에는 샘플러 ${roleName} 조건의 실제 CLIP 토큰이 없습니다. Sampling Trace CLIP의 CLIP 출력을 ${roleName} Text Encode의 clip 입력에도 연결한 뒤 다시 실행하세요. 현재 주의 수치는 단어 이름에 연결하지 않습니다.`,
+          `This run has no actual CLIP tokens for the sampler ${roleName} condition. Connect Sampling Trace CLIP's CLIP output to the ${roleName} Text Encode clip input and run again. Current attention values are not attached to word labels.`,
+        ),
+      ));
+      cards.append(card);
+      continue;
+    }
+    const values = promptWordValues(words, role).sort((a, b) => b.value - a.value);
+    const maxValue = Math.max(...values.map((word) => word.value), 1e-12);
+    const bars = el("div", "cti-influence-bars");
+    for (const word of values) {
+      const row = el("div", "cti-influence-row");
+      const fill = el("span", "cti-influence-fill");
+      fill.style.setProperty("--cti-fill-width", `${Math.max(2, (word.value / maxValue) * 100)}%`);
+      row.append(
+        el("span", "cti-influence-token", `${word.label}${word.count > 1 ? ` ×${word.count}` : ""}`),
+        el("span", "cti-influence-value", `${(word.value * 100).toFixed(2)}%`),
+        fill,
+      );
+      bars.append(row);
+    }
+    card.append(bars);
+    card.append(el("span", "cti-empty-footnote", localeText("특수·패딩·구두점 제외 · 같은 단어는 합산", "Special, padding, and punctuation excluded · repeated words combined")));
+    cards.append(card);
+  }
+  container.append(cards);
+
+  if (run.options?.mode === "advanced") {
+    const details = document.createElement("details");
+    details.className = "cti-details cti-influence-details";
+    details.append(el("summary", "", localeText("전체 단어의 스텝 흐름", "All-word step flow")));
+    for (const roleName of ["positive", "negative"]) {
+      const roleSteps = steps.map((step) => step.promptInfluence?.roles?.[roleName] || null);
+      const expectedWeightCount = roleSteps.find((role) => role?.weights?.length)?.weights?.length || 0;
+      const words = promptWordGroups(run, prompts, roleName, expectedWeightCount);
+      const orderedWords = words
+        .map((word) => ({
+          ...word,
+          maximum: Math.max(...roleSteps.map((role) => promptWordValues([word], role)[0].value), 0),
+        }))
+        .sort((a, b) => b.maximum - a.maximum);
+      if (!orderedWords.length) continue;
+      const grid = el("div", `cti-influence-heatmap role-${roleName}`);
+      grid.style.setProperty("--cti-step-count", String(steps.length));
+      grid.append(el("strong", "cti-influence-heatmap-title", promptRoleLabel(roleName)));
+      const maxValue = Math.max(...orderedWords.map((word) => word.maximum), 1e-12);
+      for (const word of orderedWords) {
+        grid.append(el("span", "cti-influence-heatmap-label", `${word.label}${word.count > 1 ? ` ×${word.count}` : ""}`));
+        const cells = el("span", "cti-influence-heatmap-cells");
+        steps.forEach((step, stepIndex) => {
+          const value = promptWordValues([word], roleSteps[stepIndex])[0].value;
+          const cell = el("span", `cti-influence-cell ${stepIndex === selectedStepIndex ? "selected" : ""}`);
+          cell.style.setProperty("--cti-cell-fill", `${Math.min(100, (value / maxValue) * 100)}%`);
+          cell.title = `${localeText("스텝", "Step")} ${Number(step.step || 0) + 1} · ${(value * 100).toFixed(3)}%`;
+          cells.append(cell);
+        });
+        grid.append(cells);
+      }
+      details.append(grid);
+    }
+    container.append(details);
+  }
+  container.append(el(
+    "p",
+    "cti-empty-footnote cti-prompt-boundary",
+    localeText(
+      "단어 목록은 실제 CLIP 입력을 샘플러 positive·negative 소켓 경로로 구분한 것입니다. 표시값은 샘플링 중 같은 단어의 부분 토큰과 반복 출현을 합한 Q/K 관측 주의 비중이며 인과적 품질 기여율은 아닙니다.",
+      "Word lists classify actual CLIP inputs by the sampler positive and negative socket paths. Values combine sub-tokens and repeated occurrences into observed Q/K attention shares during sampling, not causal quality contributions.",
+    ),
+  ));
 }
 
 function renderPromptTokens(container, run) {
   container.replaceChildren();
-  const header = el("div", "cti-section-header");
-  const heading = el("div", "cti-heading-group");
-  heading.append(
-    el("h3", "cti-section-title", localeText("텍스트 프롬프트와 토큰", "Text Prompt & Tokens")),
-    el(
-      "span",
-      "cti-section-kicker",
-      localeText(
-        "원문이 실제 텍스트 인코더 토큰으로 나뉜 결과",
-        "How the original text was split by the actual text encoder",
-      ),
-    ),
-  );
-  header.append(heading);
-  container.append(header);
 
   if (!run) {
     container.append(el("div", "cti-empty", localeText("실행을 선택하면 프롬프트 토큰을 볼 수 있습니다.", "Select a run to inspect prompt tokens.")));
@@ -1708,155 +1940,7 @@ function renderPromptTokens(container, run) {
     container.append(el("div", "cti-inline-notice", localeText("일부 프롬프트의 토큰화에 실패했습니다. 아래 오류와 원문은 보존했습니다.", "Some prompts failed to tokenize. Their errors and source text are preserved below.")));
   }
 
-  let selected = prompts.find((prompt) => String(prompt.nodeId) === String(state.selectedPromptNodeId));
-  if (!selected) {
-    selected = prompts[0];
-    state.selectedPromptNodeId = String(selected.nodeId);
-    state.selectedPromptCallIndex = 0;
-    state.selectedTokenKey = null;
-  }
-
-  const tabs = el("div", "cti-prompt-tabs");
-  for (const prompt of prompts) {
-      const roles = (prompt.roles || []).map(promptRoleLabel).join("·");
-      const firstCall = (prompt.calls || []).find((call) => !call.internal);
-      const sourceText = firstCall?.text || Object.values(prompt.texts || {})[0] || "";
-      const preview = String(sourceText).replaceAll("\n", " ").slice(0, 70) || localeText("(빈 프롬프트)", "(empty prompt)");
-      const tab = button("", () => {
-        state.selectedPromptNodeId = String(prompt.nodeId);
-        state.selectedPromptCallIndex = 0;
-        state.selectedTokenKey = null;
-        render();
-      }, `cti-prompt-tab ${String(prompt.nodeId) === String(selected.nodeId) ? "selected" : ""}`);
-      tab.append(el("strong", "", `${roles} · #${prompt.nodeId}`), el("span", "", preview));
-      tab.title = prompt.classType || "";
-      tabs.append(tab);
-  }
-  container.append(tabs);
-
-  const promptHead = el("div", "cti-prompt-head");
-  const roles = el("div", "cti-prompt-roles");
-  for (const role of selected.roles || ["unknown"]) roles.append(el("span", `cti-badge prompt-${role}`, promptRoleLabel(role)));
-  promptHead.append(
-    el("strong", "", `#${selected.nodeId} ${selected.classType}`),
-    roles,
-  );
-  container.append(promptHead);
-
-  const actualCalls = (selected.calls || []).filter((call) => !call.internal);
-  let selectedCall = actualCalls.find((call) => Number(call.callIndex) === Number(state.selectedPromptCallIndex));
-  if (!selectedCall && actualCalls.length) {
-    selectedCall = actualCalls[0];
-    state.selectedPromptCallIndex = Number(selectedCall.callIndex || 0);
-    state.selectedTokenKey = null;
-  }
-  if (actualCalls.length > 1) {
-    const callTabs = el("div", "cti-prompt-call-tabs");
-    for (const call of actualCalls) {
-      const callButton = button(
-        call.sourceField || `${localeText("호출", "Call")} ${Number(call.callIndex || 0) + 1}`,
-        () => {
-          state.selectedPromptCallIndex = Number(call.callIndex || 0);
-          state.selectedTokenKey = null;
-          render();
-        },
-        `cti-prompt-call ${Number(call.callIndex) === Number(selectedCall?.callIndex) ? "selected" : ""}`,
-      );
-      callTabs.append(callButton);
-    }
-    container.append(callTabs);
-  }
-
-  const copies = el("div", "cti-prompt-copies");
-  const displayTexts = selectedCall
-    ? [[selectedCall.sourceField || "tokenize", selectedCall.text]]
-    : Object.entries(selected.texts || {});
-  for (const [source, text] of displayTexts) {
-    const copy = el("div", "cti-prompt-copy");
-    const label = source === "default" || source === "text"
-      ? localeText("실제 프롬프트 원문", "Actual prompt source")
-      : `${source} ${localeText("실제 원문", "actual source")}`;
-    copy.append(el("span", "cti-zone-label", label), el("pre", "", text || localeText("(빈 프롬프트)", "(empty prompt)")));
-    copies.append(copy);
-  }
-  container.append(copies);
-
-  if (selected.error) container.append(el("div", "cti-inline-notice", selected.error));
-  let encoders = selectedCall?.encoders || selected.encoders || [];
-  if (selectedCall?.usedEncoders?.length) {
-    encoders = encoders.filter((encoder) => selectedCall.usedEncoders.includes(String(encoder.name)));
-  }
-  if (!encoders.length) return;
-
-  const lanes = el("div", "cti-token-lanes");
-  const allTokens = [];
-  for (const encoder of encoders) {
-    const lane = el("article", "cti-token-lane");
-    const laneHead = el("div", "cti-token-lane-head");
-    laneHead.append(
-      el("strong", "", encoderLabel(encoder.name)),
-      el("span", "cti-section-kicker", localeText(
-        `${encoder.chunkCount || 0}청크 · 내용 ${encoder.contentTokenCount || 0} · 패딩 ${encoder.paddingTokenCount || 0}`,
-        `${encoder.chunkCount || 0} chunks · ${encoder.contentTokenCount || 0} content · ${encoder.paddingTokenCount || 0} padding`,
-      )),
-    );
-    lane.append(laneHead);
-    const contentTokens = el("div", "cti-token-chips");
-    (encoder.chunks || []).forEach((chunk, chunkIndex) => {
-      chunk.forEach((token) => {
-        const key = tokenKey(selectedCall?.callIndex || 0, encoder.name, chunkIndex, token.index);
-        const item = { encoder: encoder.name, chunkIndex, token, key };
-        allTokens.push(item);
-        if (["start", "end", "padding"].includes(token.special)) return;
-        const chip = button(tokenChipLabel(token), () => {
-          state.selectedTokenKey = key;
-          render();
-        }, `cti-token-chip ${state.selectedTokenKey === key ? "selected" : ""}`);
-        chip.title = localeText(
-          `토큰 ${token.tokenId ?? "임베딩"} · 가중치 ${formatNumber(token.weight, 3)} · 단어 ${token.wordId ?? "—"}`,
-          `Token ${token.tokenId ?? "embedding"} · weight ${formatNumber(token.weight, 3)} · word ${token.wordId ?? "—"}`,
-        );
-        contentTokens.append(chip);
-      });
-    });
-    if (!contentTokens.childElementCount) contentTokens.append(el("span", "cti-empty-footnote", localeText("내용 토큰이 없습니다.", "No content tokens.")));
-    lane.append(contentTokens);
-    lanes.append(lane);
-  }
-  container.append(lanes);
-
-  let selectedToken = allTokens.find((item) => item.key === state.selectedTokenKey && !["start", "end", "padding"].includes(item.token.special));
-  if (!selectedToken) {
-    selectedToken = allTokens.find((item) => !["start", "end", "padding"].includes(item.token.special));
-    state.selectedTokenKey = selectedToken?.key || null;
-  }
-  if (selectedToken) {
-    const token = selectedToken.token;
-    const detail = el("div", "cti-token-detail");
-    detail.append(
-      el("strong", "", localeText("선택 토큰", "Selected token")),
-      el("span", "", `${encoderLabel(selectedToken.encoder)} · ${localeText("청크", "chunk")} ${selectedToken.chunkIndex + 1} · #${token.index + 1}`),
-      el("span", "", `ID ${token.tokenId ?? localeText("임베딩", "embedding")} · ${localeText("가중치", "weight")} ${formatNumber(token.weight, 4)} · ${localeText("단어 묶음", "word group")} ${token.wordId ?? "—"}`),
-      el("code", "", `${tokenChipLabel(token)}  ${token.piece || ""}`.trim()),
-    );
-    container.append(detail);
-  }
-
-  const raw = document.createElement("details");
-  raw.className = "cti-details";
-  raw.append(
-    el("summary", "", localeText("특수·패딩 포함 원시 토큰", "Raw tokens including special and padding")),
-    el("pre", "cti-json", JSON.stringify(selected.calls || encoders, null, 2)),
-  );
-  container.append(raw);
-  container.append(el(
-    "p",
-    "cti-empty-footnote cti-prompt-boundary",
-    localeText(
-      "표시값은 토큰 분할과 입력 가중치입니다. 관심도, 품질 기여율 또는 인과 비율을 뜻하지 않습니다.",
-      "These values show token splitting and input weights, not attention, quality contribution, or causal percentages.",
-    ),
-  ));
+  renderPromptInfluence(container, run, prompts);
 }
 
 function render() {

@@ -67,6 +67,12 @@ def test_session_persists_complete_run(monkeypatch, tmp_path: Path):
             control={"input": [torch.ones(1, 4, 8, 8) * (step + 1)]},
             transformer_options={"cond_or_uncond": [0, 1], "patches": {"attn2_patch": []}},
         )
+        session.record_prompt_attention(
+            q=torch.randn(2, 6, 8),
+            k=torch.randn(2, 3, 8),
+            heads=2,
+            transformer_options={"cond_or_uncond": [0, 1], "block": ("input", 0), "block_index": 0},
+        )
         session.capture_step(
             step=step,
             x0=torch.full((1, 4, 8, 8), step * 0.2),
@@ -87,6 +93,8 @@ def test_session_persists_complete_run(monkeypatch, tmp_path: Path):
     assert len(run["steps"]) == 2
     assert run["steps"][0]["cfg"]["deltaMeanAbs"] > 0
     assert run["steps"][0]["control"]["active"] is True
+    assert run["steps"][0]["promptInfluence"]["layerCount"] == 2
+    assert set(run["steps"][0]["promptInfluence"]["roles"]) == {"positive", "negative"}
     assert (store.run_directory(session.run_id) / "report.md").exists()
     assert (store.run_directory(session.run_id) / "report.html").exists()
     assert len(list((store.run_directory(session.run_id) / "artifacts").glob("*.jpg"))) == 2

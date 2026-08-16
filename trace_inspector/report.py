@@ -95,6 +95,66 @@ def _used_encoders(call: dict[str, Any]) -> list[dict[str, Any]]:
     return [encoder for encoder in encoders if not used or str(encoder.get("name")) in used]
 
 
+def _token_label(token: dict[str, Any]) -> str:
+    special = token.get("special")
+    if special in {"start", "end", "padding"}:
+        return str(special).upper()
+    return str(token.get("decoded") or token.get("piece") or token.get("tokenId") or "?").strip() or "␠"
+
+
+def _role_token_labels(run: dict[str, Any], role: str) -> dict[int, str]:
+    prompts = _prompt_tokenization(run).get("prompts", []) or []
+    prompt = next((item for item in prompts if role in (item.get("roles", []) or [])), None)
+    if not prompt:
+        return {}
+    calls = _prompt_calls(prompt)
+    if not calls:
+        return {}
+    labels: dict[int, list[str]] = {}
+    for encoder in calls[0].get("encoders", []) or []:
+        offset = 0
+        for chunk in encoder.get("chunks", []) or []:
+            for token in chunk:
+                index = offset + int(token.get("index", 0) or 0)
+                if token.get("special") in {"start", "end", "padding"}:
+                    continue
+                label = _token_label(token)
+                labels.setdefault(index, [])
+                if label not in labels[index]:
+                    labels[index].append(label)
+            offset += len(chunk)
+    return {index: " / ".join(values) for index, values in labels.items()}
+
+
+def _prompt_influence_rows(run: dict[str, Any], steps: list[dict[str, Any]]) -> list[list[str]]:
+    label_maps = {role: _role_token_labels(run, role) for role in ("positive", "negative")}
+    rows: list[list[str]] = []
+    for step in steps:
+        influence = step.get("promptInfluence", {}) or {}
+        if not influence.get("layerCount"):
+            continue
+        values = []
+        for role in ("positive", "negative"):
+            role_data = (influence.get("roles", {}) or {}).get(role, {}) or {}
+            weights = role_data.get("weights", []) or []
+            top = sorted(
+                ((index, weight) for index, weight in enumerate(weights) if index in label_maps[role]),
+                key=lambda item: float(item[1]),
+                reverse=True,
+            )[:5]
+            values.append(", ".join(
+                f"{label_maps[role].get(index, f'#{index + 1}')} {float(weight) * 100:.2f}%"
+                for index, weight in top
+            ) or "—")
+        rows.append([
+            str(int(step.get("step", 0)) + 1),
+            str(influence.get("layerCount", 0)),
+            values[0],
+            values[1],
+        ])
+    return rows
+
+
 def render_markdown(run: dict[str, Any], steps: list[dict[str, Any]]) -> str:
     options = run.get("options", {}) or {}
     settings = run.get("generationSettings", {}) or {}
@@ -133,7 +193,7 @@ def render_markdown(run: dict[str, Any], steps: list[dict[str, Any]]) -> str:
         "## Text prompt tokens",
         "",
         f"- Capture status: `{_prompt_tokenization(run).get('status') or 'not captured'}`",
-        "- Boundary: token splitting and input weights are recorded; attention, quality contribution, and causal percentages are not measured here.",
+        "- Boundary: token splitting and input weights below are separate from the sampled cross-attention observations.",
         "",
     ]
     prompts = _prompt_tokenization(run).get("prompts", []) or []
@@ -158,6 +218,21 @@ def render_markdown(run: dict[str, Any], steps: list[dict[str, Any]]) -> str:
                 lines.append(f"- Tokenization error: `{prompt.get('error')}`")
     else:
         lines.append("- No supported standard prompt token record is available.")
+    lines.extend(["", "## Prompt attention by step", ""])
+    influence_rows = _prompt_influence_rows(run, steps)
+    if influence_rows:
+        lines.extend([
+            "| Step | Observed layers | Positive top tokens | Negative top tokens |",
+            "|---:|---:|---|---|",
+        ])
+        for row in influence_rows:
+            lines.append("| " + " | ".join(row) + " |")
+        lines.extend([
+            "",
+            "Sampled cross-attention is an approximate observed share averaged across attention layers. It is not a causal quality contribution.",
+        ])
+    else:
+        lines.append("- No sampled cross-attention observation is available for this run.")
     lines.extend(["", "## Notes", ""])
     notes = _notes(run)
     if notes:
@@ -273,6 +348,20 @@ def render_html(run: dict[str, Any], steps: list[dict[str, Any]]) -> str:
             f'{sources}{error}</article>'
         )
     prompt_cards_html = "".join(prompt_cards) or '<p class="small">No supported standard prompt token record is available.</p>'
+    influence_rows = _prompt_influence_rows(run, steps)
+    influence_html = "".join(
+        "<tr>"
+        f"<td>{html.escape(row[0])}</td><td>{html.escape(row[1])}</td>"
+        f'<td class="positive">{html.escape(row[2])}</td>'
+        f'<td class="negative">{html.escape(row[3])}</td></tr>'
+        for row in influence_rows
+    )
+    influence_html = (
+        '<table><thead><tr><th>Step</th><th>Observed layers</th><th>Positive top tokens</th><th>Negative top tokens</th></tr></thead>'
+        f'<tbody>{influence_html}</tbody></table>'
+        if influence_html
+        else '<p class="small">No sampled cross-attention observation is available for this run.</p>'
+    )
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -280,13 +369,14 @@ def render_html(run: dict[str, Any], steps: list[dict[str, Any]]) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ComfyUI Trace {html.escape(str(run.get('runId', '')))}</title>
 <style>
-body{{font:14px/1.5 system-ui,sans-serif;margin:24px;background:#111;color:#ddd}}
+body{{--positive:#78aede;--negative:#d37b7b;font:14px/1.5 system-ui,sans-serif;margin:24px;background:#111;color:#ddd}}
 code,pre{{font-family:ui-monospace,monospace}}pre{{background:#1b1b1b;padding:12px;overflow:auto}}
 table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #333;padding:6px;text-align:left}}
 th{{position:sticky;top:0;background:#202020}}img{{max-width:180px;max-height:120px}}
 .small{{color:#aaa}}
 .note{{border-left:3px solid #78aeda;background:#1b1b1b;padding:8px 10px;margin:8px 0}}.note p{{margin:5px 0 0}}
 .prompt{{border-left:3px solid #78aeda;background:#1b1b1b;padding:8px 10px;margin:8px 0}}.prompt h3{{margin:0 0 7px}}
+.positive{{color:var(--positive)}}.negative{{color:var(--negative)}}
 </style>
 </head>
 <body>
@@ -304,8 +394,11 @@ th{{position:sticky;top:0;background:#202020}}img{{max-width:180px;max-height:12
 <pre>{html.escape(model_snapshot_json)}</pre>
 <h2>Text prompt tokens</h2>
 <p><b>Capture status:</b> <code>{html.escape(str(prompt_capture.get('status') or 'not captured'))}</code></p>
-<p class="small">Token splitting and input weights are recorded. Attention, quality contribution, and causal percentages are not measured here.</p>
+<p class="small">Token splitting and input weights below are separate from the sampled cross-attention observations.</p>
 {prompt_cards_html}
+<h2>Prompt attention by step</h2>
+{influence_html}
+<p class="small">Sampled cross-attention is an approximate observed share averaged across attention layers. It is not a causal quality contribution.</p>
 <h2>Notes</h2>
 {note_cards}
 <h2>Diagnostics (관찰 기반 가설)</h2>

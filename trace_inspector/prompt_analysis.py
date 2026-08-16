@@ -168,7 +168,16 @@ def _prompt_role_map(prompt: Mapping[str, Any]) -> dict[str, set[str]]:
         if not isinstance(node, Mapping):
             return
         roles.setdefault(node_id, set()).add(role)
-        for upstream in (node.get("inputs") or {}).values():
+        inputs = node.get("inputs") or {}
+        if not isinstance(inputs, Mapping):
+            return
+        # A nested sampler/conditioning node owns its positive and negative
+        # branches. Its sockets are scanned independently by the outer loop;
+        # continuing through every input here would leak each role into the
+        # opposite branch.
+        if "positive" in inputs or "negative" in inputs:
+            return
+        for upstream in inputs.values():
             if _is_link(upstream):
                 visit(upstream, role, visited)
 

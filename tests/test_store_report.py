@@ -63,6 +63,15 @@ def step_payload(run_id: str):
         "x0": {"mean": 0.0, "std": 1.0},
         "cfg": {"deltaMeanAbs": 0.5},
         "control": {"weightedMeanAbs": 0.2},
+        "promptInfluence": {
+            "method": "sampled_cross_attention",
+            "approximate": True,
+            "layerCount": 2,
+            "roles": {
+                "positive": {"layerCount": 1, "weights": [0.25, 0.75]},
+                "negative": {"layerCount": 1, "weights": [0.6, 0.4]},
+            },
+        },
     }
 
 
@@ -104,9 +113,11 @@ def test_report_renderers_do_not_raise():
     assert "Workflow: portrait-study.json" in markdown
     assert "Text prompt tokens" in markdown
     assert "red cat" in markdown
-    assert "causal percentages are not measured" in markdown
+    assert "Prompt attention by step" in markdown
+    assert "not a causal quality contribution" in markdown
     assert "Text prompt tokens" in html
     assert "red cat" in html
+    assert "Prompt attention by step" in html
 
 
 def test_reports_render_actual_traced_clip_calls():

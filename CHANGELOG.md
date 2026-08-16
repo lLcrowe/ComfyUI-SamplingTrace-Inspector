@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Added per-step positive/negative sampled cross-attention observation for Advanced runs with tensor statistics enabled.
+- Added blue positive and red negative all-word cards plus an Advanced step-by-word heatmap to the panel; BPE fragments and repeated occurrences are combined into readable words.
+- Relabeled the word analysis around the sampler `positive` and `negative` CONDITIONING sockets, with socket-specific card titles and tooltips.
+- Fixed nested sampler role traversal leaking positive and negative prompt labels into each other; uncaptured socket tokens now show a connection notice instead of attaching attention values to the wrong words.
+- Unified prompt-attention selection with the denoise preview step and removed the redundant text-side step picker.
+- Removed raw prompt-source and CLIP-token diagnostics from the normal panel while retaining their captured data for calculation and persisted evidence.
+- Added prompt-attention evidence to `steps.jsonl` and Markdown/HTML reports while retaining an explicit non-causal boundary.
+- Verified cold/cold decoded output identity, callback order, 8-step SDXL role vectors, live UI rendering, and the paired performance budget.
+
 ## 0.4.0b1 — Private beta candidate
 
 - Reduced the public capture modes to Basic and Advanced; legacy Deep workflow values now normalize to Advanced.

@@ -86,6 +86,26 @@ def test_custom_sampler_positive_and_negative_are_both_resolved():
     assert by_id["2"]["roles"] == ["negative"]
 
 
+def test_nested_sampler_follows_only_the_matching_condition_socket():
+    graph = prompt_graph()
+    graph["5"] = {
+        "class_type": "IllustriousKSamplerPresets",
+        "inputs": {"positive": ["4", 0], "negative": ["2", 0]},
+    }
+    graph["6"] = {
+        "class_type": "IllustriousKSamplerPresets",
+        "inputs": {"positive": ["5", 2], "negative": ["5", 3]},
+    }
+    capture = PromptTokenCapture(graph)
+    clip = FakeClip()
+    capture.record(clip, "cat", clip.tokenize("cat", True), node_id="1")
+    capture.record(clip, "bad", clip.tokenize("bad", True), node_id="2")
+
+    by_id = {prompt["nodeId"]: prompt for prompt in capture.snapshot()["prompts"]}
+    assert by_id["1"]["roles"] == ["positive"]
+    assert by_id["2"]["roles"] == ["negative"]
+
+
 def test_capture_flushes_existing_and_future_calls_to_bound_session():
     capture = PromptTokenCapture(prompt_graph())
     clip = FakeClip()

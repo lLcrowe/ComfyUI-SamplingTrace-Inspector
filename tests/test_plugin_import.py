@@ -105,10 +105,10 @@ def test_panel_uses_comfy_locale_and_hides_uncaptured_preview_steps():
     assert "liveEventsExpanded: false" in panel_script
     assert "eventDetails.open = state.liveEventsExpanded" in panel_script
     assert "state.liveEventsExpanded = eventDetails.open" in panel_script
-    assert "selectedPromptCallIndex: 0" in panel_script
-    assert "prompt.calls || []" in panel_script
+    assert "function promptWordGroups(run, prompts, role" in panel_script
+    assert "promptWordValues(words, role)" in panel_script
     assert "Sampling Trace CLIP의 CLIP 출력을 긍정·부정 Text Encode에 연결" in panel_script
-    assert 'localeText("실제 프롬프트 원문", "Actual prompt source")' in panel_script
+    assert 'localeText("입력 프롬프트·CLIP 토큰 상세"' not in panel_script
 
 
 def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_path: Path):

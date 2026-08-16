@@ -188,6 +188,18 @@ The isolated server was stopped after verification. The original ComfyUI process
 - cold/cold identity: metadata-free PNG and decoded RGBA hashes match; differing pixels 0; callback order preserved 8/8
 - pending: user visual acceptance on their own workflow
 
+## Per-step prompt attention
+
+- correctness: sampled observer equals a full QK-softmax reference when every query is selected; positive/negative CFG batches stay separate
+- non-interference: the attention override returns the original attention function result by identity in the hook test and never mutates q/k/v
+- live Run: `d27a0d2c-5946-4030-84a1-6a8161616a27`, 8/8 steps, each step positive 70 layers + negative 70 layers, 77 tokens per role, each role vector sum `1.0`
+- cold/cold identity: seed `2608160222`, Euler/normal, 8 steps, CFG 5.0; Off/On decoded RGBA SHA-256 `285BD1199AF62E9753BD723B0C33A7D4526E4DA5485559973B13A5B7DB39892C`, callback order preserved 8/8
+- live UI: 8 step selectors, 8 positive + 8 negative bars, 2 heatmaps / 160 cells; computed positive tint `rgba(... / 0.14)` with blue border and negative tint with red border; Sampling Trace console errors 0
+- performance N=3 paired: Advanced standard (`persist_tensor_stats=false`) median `+126ms / +11.732%`; Advanced influence (`true`) median `+318ms / +30.695%`; all Off/Basic/Advanced decoded RGBA hashes matched per seed
+- package checks: embedded pytest `72 passed`, Python/JavaScript static check, `node --check`, `git diff --check`, plugin import smoke and node 9/9 PASS
+
+The UI and reports call this an approximate observed attention share, not a causal quality contribution. Basic and Advanced standard do not install the Q/K observer.
+
 ---
 
 ## 공개 베타 전에 남은 검증

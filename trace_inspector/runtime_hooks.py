@@ -119,6 +119,27 @@ def install_runtime_hooks(model_patcher: Any, session: TraceSession) -> Any:
     )
 
     if session.options.mode == "advanced":
+        if session.options.captures_statistics:
+            transformer_options = model_patcher.model_options.setdefault("transformer_options", {})
+            previous_attention_override = transformer_options.get("optimized_attention_override")
+
+            def attention_observer(original: Any, q: Any, k: Any, v: Any, heads: Any, *args: Any, **kwargs: Any) -> Any:
+                try:
+                    session.record_prompt_attention(
+                        q=q,
+                        k=k,
+                        heads=heads,
+                        transformer_options=kwargs.get("transformer_options", {}),
+                        scale=kwargs.get("scale"),
+                    )
+                except Exception as exc:
+                    session.record_error("prompt_attention", exc)
+                if previous_attention_override is not None:
+                    return previous_attention_override(original, q, k, v, heads, *args, **kwargs)
+                return original(q, k, v, heads, *args, **kwargs)
+
+            transformer_options["optimized_attention_override"] = attention_observer
+
         def apply_model_wrapper(executor: Any, *args: Any, **kwargs: Any) -> Any:
             timestep = _argument(args, kwargs, 1, "t")
             control = _argument(args, kwargs, 4, "control")

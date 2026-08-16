@@ -21,6 +21,7 @@ from .preview_capture import (
     preview_thumbnail,
     save_preview,
 )
+from .prompt_attention import aggregate_attention_events, observe_cross_attention
 from .prompt_analysis import analyze_prompt, extract_generation_settings
 from .store import STORE
 from .tensor_stats import (
@@ -168,6 +169,7 @@ class TraceSession:
         self._current_segment_index: int | None = None
         self._pending_cfg: list[dict[str, Any]] = []
         self._pending_control: list[dict[str, Any]] = []
+        self._pending_prompt_attention: list[dict[str, Any]] = []
         self._previous_preview_thumb: Image.Image | None = None
         self._last_control_stats_sigma: float | None = None
         self._finalized = False
@@ -300,6 +302,7 @@ class TraceSession:
             self._current_segment_index = segment_index
             self._pending_cfg.clear()
             self._pending_control.clear()
+            self._pending_prompt_attention.clear()
             self._previous_preview_thumb = None
             self._last_control_stats_sigma = None
             self._sampling_started_monotonic = time.perf_counter()
@@ -421,6 +424,38 @@ class TraceSession:
         except Exception as exc:
             self.record_error("control", exc)
 
+    def record_prompt_attention(
+        self,
+        *,
+        q: Any,
+        k: Any,
+        heads: Any,
+        transformer_options: Any,
+        scale: float | None = None,
+    ) -> None:
+        if not self.options.captures_statistics:
+            return
+        options = transformer_options if isinstance(transformer_options, dict) else {}
+        observed = observe_cross_attention(
+            q,
+            k,
+            heads,
+            options.get("cond_or_uncond"),
+            max_query_samples=16,
+            scale=scale,
+        )
+        if not observed:
+            return
+        block = options.get("block")
+        block_index = options.get("block_index")
+        with self._lock:
+            for event in observed:
+                event["block"] = list(block) if isinstance(block, (list, tuple)) else block
+                event["blockIndex"] = block_index
+                self._pending_prompt_attention.append(event)
+            if len(self._pending_prompt_attention) > 2048:
+                del self._pending_prompt_attention[:-2048]
+
     def capture_step(
         self,
         *,
@@ -434,8 +469,10 @@ class TraceSession:
             segment_index = self._current_segment_index if self._current_segment_index is not None else 0
             cfg_events = list(self._pending_cfg)
             control_events = list(self._pending_control)
+            prompt_attention_events = list(self._pending_prompt_attention)
             self._pending_cfg.clear()
             self._pending_control.clear()
+            self._pending_prompt_attention.clear()
 
         include_statistics = self.options.captures_statistics
         record: dict[str, Any] = {
@@ -457,6 +494,7 @@ class TraceSession:
             ),
             "cfg": _aggregate_cfg(cfg_events),
             "control": _aggregate_control(control_events),
+            "promptInfluence": aggregate_attention_events(prompt_attention_events),
         }
 
         should_preview = self.options.persist_previews and (
@@ -505,6 +543,10 @@ class TraceSession:
                     "active": record["control"].get("active"),
                     "eventCount": record["control"].get("eventCount"),
                     "weightedMeanAbs": record["control"].get("weightedMeanAbs"),
+                },
+                "promptInfluence": {
+                    "layerCount": record["promptInfluence"].get("layerCount"),
+                    "roles": sorted(record["promptInfluence"].get("roles", {}).keys()),
                 },
             },
         )
