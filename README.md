@@ -150,7 +150,7 @@ Trace Note
   ① CLIP ──→ [Sampling Trace CLIP · Connect Both Prompts]
                    ② CLIP ──┬──→ Positive Text Encode
                             └──→ Negative Text Encode
-                   ③ PROMPT_TRACE ──────────────────────┐
+                   ③ → Trace Model.prompt_trace ──────────┐
        MODEL                                             │
          ↓                                               │
 [LoRA Loader]

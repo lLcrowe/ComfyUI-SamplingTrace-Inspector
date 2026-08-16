@@ -58,12 +58,13 @@ class ComfyTraceClip:
 
     RETURN_TYPES = ("CLIP", "PROMPT_TRACE")
     # Output links are index-based, so these visible labels remain workflow-compatible.
-    RETURN_NAMES = ("② positive + negative", "③ Trace Model")
+    RETURN_NAMES = ("② positive + negative", "③ → Trace Model.prompt_trace")
     FUNCTION = "attach"
     CATEGORY = "Sampling Trace Inspector"
     DESCRIPTION = (
         "Connect Checkpoint CLIP here, then fan the CLIP output out to both Positive and Negative Text Encode nodes. "
-        "Connect prompt_trace to Sampling Trace Model. The original CLIP values pass through unchanged."
+        "Connect prompt_trace to the Sampling Trace Model prompt_trace input, not the Inspector panel or trace_session. "
+        "The original CLIP values pass through unchanged."
     )
 
     @classmethod

@@ -78,7 +78,7 @@ def test_korean_locale_covers_every_custom_node():
     assert "긍정/부정 양쪽 연결" in clip["display_name"]
     assert clip["inputs"]["clip"]["name"].startswith("①")
     assert clip["outputs"]["0"]["name"].startswith("②")
-    assert clip["outputs"]["1"]["name"].startswith("③")
+    assert clip["outputs"]["1"]["name"] == "③ → Trace Model.prompt_trace"
     assert "둘 다 연결" in clip["outputs"]["0"]["name"]
     assert model["inputs"]["prompt_trace"]["name"].startswith("③")
     assert "새 연결 금지" in model["inputs"]["clip"]["name"]
@@ -146,7 +146,7 @@ def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_pa
         assert len(module.NODE_CLASS_MAPPINGS) == 9
         assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].RETURN_NAMES == (
             "② positive + negative",
-            "③ Trace Model",
+            "③ → Trace Model.prompt_trace",
         )
         assert all(
             getattr(node_class, "DESCRIPTION", "").strip()
