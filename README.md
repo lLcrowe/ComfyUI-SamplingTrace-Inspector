@@ -150,7 +150,7 @@ Trace Note
   ① CLIP ──→ [Sampling Trace CLIP · Connect Both Prompts]
                    ② CLIP ──┬──→ Positive Text Encode
                             └──→ Negative Text Encode
-                   ③ 추적 모델 · 프롬프트 추적 ──────────┐
+                   ③ CLIP 프롬프트 추적 보내기 ──────────┐
        MODEL                                             │
          ↓                                               │
 [LoRA Loader]

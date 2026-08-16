@@ -78,7 +78,7 @@ def test_korean_locale_covers_every_custom_node():
     assert "긍정/부정 양쪽 연결" in clip["display_name"]
     assert clip["inputs"]["clip"]["name"].startswith("①")
     assert clip["outputs"]["0"]["name"].startswith("②")
-    assert clip["outputs"]["1"]["name"] == "③ 추적 모델 · 프롬프트 추적"
+    assert clip["outputs"]["1"]["name"] == "③ CLIP 프롬프트 추적 보내기"
     assert clip["outputs"]["0"]["name"] == "② 긍정·부정 Text Encode"
     assert model["inputs"]["prompt_trace"]["name"].startswith("③")
     assert "새 연결 금지" in model["inputs"]["clip"]["name"]
@@ -131,7 +131,7 @@ def test_trace_socket_names_follow_comfy_locale_without_changing_input_keys():
     assert 'nodeClass === "ComfyTraceClip"' in localization_script
     assert 'localeText("① 체크포인트 CLIP", "① Checkpoint CLIP")' in localization_script
     assert 'localeText("② 긍정·부정 Text Encode", "② Positive + Negative Text Encode")' in localization_script
-    assert 'localeText("③ 추적 모델 · 프롬프트 추적", "③ Trace Model · Prompt Trace")' in localization_script
+    assert 'localeText("③ CLIP 프롬프트 추적 보내기", "③ Send CLIP Prompt Trace")' in localization_script
     assert 'setSlotDisplayName(output, outputNames[index], { rename: true })' in localization_script
     assert 'prompt_trace: localeText("③ CLIP 프롬프트 추적 받기", "③ Receive CLIP Prompt Trace")' in localization_script
     assert "function installLocalizedTraceSlotLifecycle(nodeType)" in localization_script
@@ -167,7 +167,7 @@ def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_pa
         assert len(module.NODE_CLASS_MAPPINGS) == 9
         assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].RETURN_NAMES == (
             "② 긍정·부정 Text Encode",
-            "③ 추적 모델 · 프롬프트 추적",
+            "③ CLIP 프롬프트 추적 보내기",
         )
         assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].INPUT_TYPES()["required"]["clip"][1][
             "display_name"

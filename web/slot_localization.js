@@ -36,7 +36,7 @@ function applyLocalizedTraceSlotNames(node) {
 
     const outputNames = [
       localeText("② 긍정·부정 Text Encode", "② Positive + Negative Text Encode"),
-      localeText("③ 추적 모델 · 프롬프트 추적", "③ Trace Model · Prompt Trace"),
+      localeText("③ CLIP 프롬프트 추적 보내기", "③ Send CLIP Prompt Trace"),
     ];
     for (const [index, output] of (node.outputs || []).entries()) {
       if (outputNames[index]) {

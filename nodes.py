@@ -62,7 +62,7 @@ class ComfyTraceClip:
     # Output links are index-based, so these visible labels remain workflow-compatible.
     # Korean is the compatibility fallback for older frontends that ignore custom
     # socket i18n. Newer frontends and slot_localization.js switch these per locale.
-    RETURN_NAMES = ("② 긍정·부정 Text Encode", "③ 추적 모델 · 프롬프트 추적")
+    RETURN_NAMES = ("② 긍정·부정 Text Encode", "③ CLIP 프롬프트 추적 보내기")
     FUNCTION = "attach"
     CATEGORY = "Sampling Trace Inspector"
     DESCRIPTION = (

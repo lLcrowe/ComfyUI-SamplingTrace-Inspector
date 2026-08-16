@@ -14,7 +14,7 @@
         "tooltip": "이 출력 하나에서 선을 두 개 빼서 긍정 Text Encode와 부정 Text Encode의 clip 입력 양쪽에 연결하세요."
       },
       "1": {
-        "name": "③ 추적 모델 · 프롬프트 추적",
+        "name": "③ CLIP 프롬프트 추적 보내기",
         "tooltip": "Sampling Trace Model 노드의 prompt_trace 입력에 연결하세요. 하단 Sampling Trace Inspector 패널이나 trace_session 소켓을 뜻하지 않습니다."
       }
     }
@@ -68,8 +68,8 @@
         "tooltip": "기존 워크플로 호환용입니다. 새 워크플로에서는 사용하지 말고 Sampling Trace CLIP의 ③ 출력을 아래 프롬프트 추적 입력에 연결하세요."
       },
       "prompt_trace": {
-        "name": "③ Sampling Trace CLIP에서 받기",
-        "tooltip": "Sampling Trace CLIP의 ‘③ 추적 모델 · 프롬프트 추적’ 출력을 여기에 연결합니다. 하단 패널이나 trace_session 연결이 아닙니다."
+        "name": "③ CLIP 프롬프트 추적 받기",
+        "tooltip": "Sampling Trace CLIP의 ‘③ CLIP 프롬프트 추적 보내기’ 출력을 여기에 연결합니다. 하단 패널이나 trace_session 연결이 아닙니다."
       }
     },
     "outputs": {
