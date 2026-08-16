@@ -65,6 +65,11 @@ def test_panel_exposes_role_colors_and_step_attention_disclaimer():
     assert "function promptRoleNodeIds(run, role)" in javascript
     assert "현재 주의 수치는 단어 이름에 연결하지 않습니다" in javascript
     assert "const selectedStep = steps[selectedStepIndex]" in javascript
+    assert "function refreshSelectedStepSurfaces(viewerContainer, run)" in javascript
+    assert "refreshSelectedStepSurfaces(container, run);" in javascript
+    assert 'range.addEventListener("change", render);' in javascript
+    scrubber_input_handler = javascript.split('range.addEventListener("input", () => {', 1)[1].split("});", 1)[0]
+    assert "render();" not in scrubber_input_handler
     assert "selectedInfluenceStepIndex" not in javascript
     assert "cti-influence-steps" not in javascript
     assert "부분 토큰과 반복 출현을 합한 Q/K 관측 주의 비중" in javascript

@@ -1048,6 +1048,65 @@ function renderNotes(container, run) {
   container.append(section);
 }
 
+function createStepVisual(step) {
+  const visual = el("div", "cti-visual-workspace");
+  visual.dataset.role = "step-visual";
+  const imageWrap = el("div", "cti-preview-stage");
+  if (step.previewUrl) {
+    const img = document.createElement("img");
+    img.className = "cti-preview";
+    img.src = imageUrl(step.previewUrl);
+    img.alt = localeText(`노이즈 제거 ${step.totalSteps}스텝 중 ${step.step + 1}스텝`, `Denoise step ${step.step + 1} of ${step.totalSteps}`);
+    imageWrap.append(img);
+  } else {
+    imageWrap.append(el("div", "cti-empty", localeText("이 스텝은 미리보기를 저장하지 않았습니다.", "This step has no decoded preview.")));
+  }
+  const overlay = el("div", "cti-preview-overlay");
+  overlay.append(
+    el("strong", "cti-preview-step", `${localeText("스텝", "STEP")} ${step.step + 1} / ${step.totalSteps}`),
+    el("span", "cti-preview-meta", `σ ${formatNumber(step.sigma, 3)} · Δ ${formatNumber(step.previewChange, 4)}`),
+  );
+  imageWrap.append(overlay);
+
+  const insight = el("aside", "cti-step-insight");
+  insight.append(el("span", "cti-insight-label", localeText("이 스텝에서 달라진 점", "What changed at this step")));
+  const changeValue = step.previewChange;
+  const changeText = changeValue == null
+    ? localeText("기준 프레임입니다. 시각 변화량은 다음으로 기록된 스텝부터 계산됩니다.", "Baseline frame — visual change starts from the next captured step.")
+    : changeValue >= 0.03
+      ? localeText("시각 변화가 큽니다. 구도와 주요 형태가 아직 자리 잡는 중입니다.", "Large visual movement. Composition and major shapes are still settling.")
+      : changeValue >= 0.01
+        ? localeText("시각 변화가 보통입니다. 구조가 안정되는 중입니다.", "Moderate visual movement. Structure is stabilizing.")
+        : localeText("시각 변화가 작습니다. 결과가 세부 표현으로 수렴하고 있습니다.", "Small visual movement. The result is converging into fine detail.");
+  insight.append(el("p", "cti-insight-copy", changeText));
+  const metrics = el("div", "cti-metrics");
+  metrics.append(
+    metricCard(localeText("시각 변화", "Visual change"), formatNumber(step.previewChange), localeText("이전 기록 미리보기 대비 정규화된 픽셀 변화", "Normalized pixel change from the previous captured preview")),
+    metricCard(localeText("CFG 영향", "CFG influence"), formatNumber(step.cfg?.deltaMeanAbs), localeText("조건부·무조건부 예측 차이의 절댓값 평균", "Mean absolute conditional-unconditional delta")),
+    metricCard(localeText("예측 x0", "Predicted x0"), `${formatNumber(step.x0?.mean, 3)} ± ${formatNumber(step.x0?.std, 3)}`),
+    metricCard(localeText("제어 신호", "Control"), step.control?.active ? formatNumber(step.control?.weightedMeanAbs) : localeText("비활성", "Inactive"), localeText("ControlNet 잔차 절댓값 평균", "Control residual mean absolute value")),
+  );
+  insight.append(metrics);
+  visual.append(imageWrap, insight);
+  return visual;
+}
+
+function refreshSelectedStepSurfaces(viewerContainer, run) {
+  const steps = run?.steps || [];
+  const step = steps[state.selectedStepIndex];
+  if (!step) return;
+
+  viewerContainer.querySelector("[data-role='step-visual']")?.replaceWith(createStepVisual(step));
+  for (const frame of viewerContainer.querySelectorAll(".cti-frame[data-step-index]")) {
+    frame.classList.toggle("selected", Number(frame.dataset.stepIndex) === state.selectedStepIndex);
+  }
+  const rawStep = viewerContainer.querySelector("[data-role='raw-step']");
+  if (rawStep) rawStep.textContent = JSON.stringify(step, null, 2);
+
+  const promptTokens = state.root?.querySelector("[data-role='prompt-tokens']");
+  if (promptTokens) renderPromptTokens(promptTokens, run);
+}
+
 function renderStepViewer(container, run) {
   container.replaceChildren();
   const steps = run?.steps || [];
@@ -1090,51 +1149,14 @@ function renderStepViewer(container, run) {
     state.selectedStepIndex = nearestPreviewStepIndex(previewIndexes, state.selectedStepIndex);
   }
   const step = steps[state.selectedStepIndex];
-  const visual = el("div", "cti-visual-workspace");
-  const imageWrap = el("div", "cti-preview-stage");
-  if (step.previewUrl) {
-    const img = document.createElement("img");
-    img.className = "cti-preview";
-    img.src = imageUrl(step.previewUrl);
-    img.alt = localeText(`노이즈 제거 ${step.totalSteps}스텝 중 ${step.step + 1}스텝`, `Denoise step ${step.step + 1} of ${step.totalSteps}`);
-    imageWrap.append(img);
-  } else {
-    imageWrap.append(el("div", "cti-empty", localeText("이 스텝은 미리보기를 저장하지 않았습니다.", "This step has no decoded preview.")));
-  }
-  const overlay = el("div", "cti-preview-overlay");
-  overlay.append(
-    el("strong", "cti-preview-step", `${localeText("스텝", "STEP")} ${step.step + 1} / ${step.totalSteps}`),
-    el("span", "cti-preview-meta", `σ ${formatNumber(step.sigma, 3)} · Δ ${formatNumber(step.previewChange, 4)}`),
-  );
-  imageWrap.append(overlay);
-
-  const insight = el("aside", "cti-step-insight");
-  insight.append(el("span", "cti-insight-label", localeText("이 스텝에서 달라진 점", "What changed at this step")));
-  const changeValue = step.previewChange;
-  const changeText = changeValue == null
-    ? localeText("기준 프레임입니다. 시각 변화량은 다음으로 기록된 스텝부터 계산됩니다.", "Baseline frame — visual change starts from the next captured step.")
-    : changeValue >= 0.03
-      ? localeText("시각 변화가 큽니다. 구도와 주요 형태가 아직 자리 잡는 중입니다.", "Large visual movement. Composition and major shapes are still settling.")
-      : changeValue >= 0.01
-        ? localeText("시각 변화가 보통입니다. 구조가 안정되는 중입니다.", "Moderate visual movement. Structure is stabilizing.")
-        : localeText("시각 변화가 작습니다. 결과가 세부 표현으로 수렴하고 있습니다.", "Small visual movement. The result is converging into fine detail.");
-  insight.append(el("p", "cti-insight-copy", changeText));
-  const metrics = el("div", "cti-metrics");
-  metrics.append(
-    metricCard(localeText("시각 변화", "Visual change"), formatNumber(step.previewChange), localeText("이전 기록 미리보기 대비 정규화된 픽셀 변화", "Normalized pixel change from the previous captured preview")),
-    metricCard(localeText("CFG 영향", "CFG influence"), formatNumber(step.cfg?.deltaMeanAbs), localeText("조건부·무조건부 예측 차이의 절댓값 평균", "Mean absolute conditional-unconditional delta")),
-    metricCard(localeText("예측 x0", "Predicted x0"), `${formatNumber(step.x0?.mean, 3)} ± ${formatNumber(step.x0?.std, 3)}`),
-    metricCard(localeText("제어 신호", "Control"), step.control?.active ? formatNumber(step.control?.weightedMeanAbs) : localeText("비활성", "Inactive"), localeText("ControlNet 잔차 절댓값 평균", "Control residual mean absolute value")),
-  );
-  insight.append(metrics);
-  visual.append(imageWrap, insight);
-  container.append(visual);
+  container.append(createStepVisual(step));
 
   const filmstrip = el("div", "cti-filmstrip");
   for (const index of previewIndexes) {
     const frame = steps[index];
     const frameButton = el("button", `cti-frame ${index === state.selectedStepIndex ? "selected" : ""}`);
     frameButton.type = "button";
+    frameButton.dataset.stepIndex = String(index);
     frameButton.title = localeText(`스텝 ${frame.step + 1} · Sigma ${formatNumber(frame.sigma, 3)} · 변화 ${formatNumber(frame.previewChange, 4)}`, `Step ${frame.step + 1} · sigma ${formatNumber(frame.sigma, 3)} · change ${formatNumber(frame.previewChange, 4)}`);
     frameButton.addEventListener("click", () => {
       state.selectedStepIndex = index;
@@ -1158,8 +1180,9 @@ function renderStepViewer(container, run) {
   range.setAttribute("aria-label", localeText("노이즈 제거 스텝", "Denoise step"));
   range.addEventListener("input", () => {
     state.selectedStepIndex = previewIndexes[Number(range.value)];
-    render();
+    refreshSelectedStepSurfaces(container, run);
   });
+  range.addEventListener("change", render);
   const previewPosition = previewIndexes.indexOf(state.selectedStepIndex);
   scrubber.append(
     button(localeText("이전", "Previous"), () => {
@@ -1178,6 +1201,7 @@ function renderStepViewer(container, run) {
   details.className = "cti-details";
   details.append(el("summary", "", localeText("원시 텐서와 스텝 수치", "Raw tensors and step metrics")));
   const pre = el("pre", "cti-json");
+  pre.dataset.role = "raw-step";
   pre.textContent = JSON.stringify(step, null, 2);
   details.append(pre);
   container.append(details);
