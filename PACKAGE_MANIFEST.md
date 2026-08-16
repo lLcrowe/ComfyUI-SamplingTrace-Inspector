@@ -3,7 +3,8 @@
 ## 바로 사용할 파일
 
 - `CODEX_START_HERE.md` — Codex 인계 시작점
-- `README.md` — 설치와 사용 개요
+- `README.md` — 영어 설치·연결·사용·보안 가이드
+- `README.ko.md` — 동일 범위의 한국어 가이드
 - `docs/CODEX_CUSTOM_NODE_INVENTORY_PROMPT.md` — 설치된 노드 선행 조사 프롬프트
 - `docs/CODEX_PROMPT.md` — Inventory 이후 실제 장착·검증 프롬프트
 - `docs/CODEX_HANDOFF.md` — 실제 설치본 통합 기준

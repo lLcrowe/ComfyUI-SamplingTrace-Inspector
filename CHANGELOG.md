@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Split the guide into an English default `README.md` and a complete Korean `README.ko.md`, with bidirectional language links and matching installation, wiring, panel, storage, privacy, support, and limitation sections.
 - Kept the denoise step range control mounted while it is being dragged, so the preview image, selected thumbnail, raw step data, and prompt-attention cards now follow every intermediate slider value instead of stopping after the first movement.
 - Made CLIP wiring self-explanatory with a “connect both prompts” node title, numbered input/output labels, explicit fan-out tooltips, and a clearly deprecated legacy CLIP input on Sampling Trace Model. Canvas slot display names now follow the active Korean/English ComfyUI locale without changing their internal types, indexes, or workflow links; the third output and target input use a matching `Send → Receive CLIP Prompt Trace` pair rather than naming the Inspector panel or `trace_session`.
 - Added per-step positive/negative sampled cross-attention observation for Advanced runs with tensor statistics enabled.

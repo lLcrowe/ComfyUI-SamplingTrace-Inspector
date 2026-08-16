@@ -1,4 +1,4 @@
-# Build Validation — 2026-08-15
+# Build Validation — 2026-08-16
 
 ## 판정
 
@@ -9,7 +9,7 @@
 ## 실행 환경
 
 ```text
-Date: 2026-08-15
+Date: 2026-08-16
 Python: 3.12.10 (ComfyUI embedded Python; ComfyUI modules were not imported)
 Node.js: v24.11.1
 pytest: 8.4.1
@@ -44,7 +44,7 @@ Actual installed package scan: 36 packages / 657 static node mappings
 Priority A: 11 (previous scanner: 24)
 Required adapters: 4 (previous scanner: 15)
 Scan errors / parse errors: 0 / 0
-Repository source checksum entries: 84/84 PASS after the current UI and prompt-trace update
+Repository source checksum entries: 85/85 PASS after the bilingual README update
 Private beta archive: previous 76-file internal-acceptance archive remains historical; refresh the archive after the next repository push
 Workflow usage scan: 36 packages / 21 observed / 52,723 evidence records / 0 errors
 Trace priority: P1 3 / P2 6 / P3 12 / P5 15
