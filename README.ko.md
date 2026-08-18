@@ -8,6 +8,8 @@ ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **
 
 ---
 
+![Sampling Trace Inspector 실행 화면](docs/images/sampling-trace-inspector-preview.png)
+
 ## 1. 핵심 목적
 
 기존 작업은 보통 다음과 같습니다.
