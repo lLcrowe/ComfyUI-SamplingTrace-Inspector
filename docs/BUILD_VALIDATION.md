@@ -12,6 +12,9 @@
 - 경로 안전: Run ID를 제한 문자로 검증하고 artifact 경로가 Run의 `artifacts` 디렉터리를 벗어나지 못하도록 resolve 후 부모 경계를 검사
 - 자동 검사: ComfyUI embedded Python 3.12.10에서 `pytest` 74개 PASS, Python compile PASS, JavaScript syntax PASS, `git diff --check` PASS
 - 공개 경계: ComfyUI 서버를 외부에 직접 노출하지 않도록 README·`SECURITY.md`에 접근 경계를 명시
+- 공개 복제: 인증 정보 없이 공개 GitHub URL에서 commit `882a0ef`을 새 디렉터리에 shallow clone하고, 다시 `pytest` 74개·정적 검사·87개 SHA-256 검증 PASS
+- GitHub 표시: 저장소 `PUBLIC`, GitHub 라이선스 인식 `GNU GPLv3`, Sponsorships와 비공개 취약점 신고 활성화, 공개 페이지 `showSponsorButton: true`
+- Registry 경계: `pyproject.toml`은 Registry 필수 필드를 유지하지만 이 검증에는 Publisher/API key 생성이나 Registry 게시를 포함하지 않음
 
 ---
 
