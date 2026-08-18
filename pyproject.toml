@@ -1,12 +1,16 @@
 [project]
 name = "comfyui-samplingtrace-inspector"
-version = "0.4.0b1"
+version = "0.4.0b2"
 description = "Preview-driven execution and sampling trace inspector for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
-authors = [{ name = "ComfyUI Sampling Trace Inspector contributors" }]
+license = { text = "GPL-3.0-only" }
+authors = [{ name = "lLcrowe" }]
 dependencies = []
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
 
 [project.urls]
 Repository = "https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector"

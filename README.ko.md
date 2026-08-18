@@ -4,7 +4,7 @@
 
 ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **노드 실행 흐름**, **Sampling Step (샘플링 단계)**, **Latent (잠재 표현 / 압축된 이미지 정보)**, **x0 (현재 예상 완성 Latent)**, **Sigma (현재 노이즈 강도)**, **CFG (조건 반영 강도)**, **ControlNet residual (제어 잔차)**을 한 타임라인에서 관찰하는 커스텀 노드 패키지입니다.
 
-> 현재 상태: **0.4.0b1 비공개 베타 후보**. 기존 설치본의 기능 경로에 더해, 비공개 저장소에서 새로 복제한 배포본을 별도 ComfyUI·사용자·출력 환경에서 내부 수용 테스트했습니다. 이 작업 머신 밖의 clean install과 외부 첫 사용자의 Quick Start 완주는 아직 별도 검증 항목입니다. 상세 근거는 `docs/LOCAL_VALIDATION.md`와 `docs/BUILD_VALIDATION.md`를 봅니다.
+> 현재 상태: **0.4.0b2 공개 미리보기(public preview)**. 배포본을 별도 ComfyUI·사용자·출력 환경에서 내부 수용 테스트했습니다. 이 작업 머신 밖의 새 설치(clean install)와 외부 첫 사용자의 빠른 시작(Quick Start) 완주는 아직 별도 검증 항목입니다. 상세 근거는 `docs/LOCAL_VALIDATION.md`와 `docs/BUILD_VALIDATION.md`를 봅니다.
 
 ---
 
@@ -104,7 +104,7 @@ docs/LOCAL_ADAPTER_PLAN.md
 
 ## 4. 설치
 
-1. 비공개 베타 참여자는 GitHub 인증 후 다음 위치에 clone합니다. ZIP을 받은 경우에도 같은 폴더명이 되도록 압축을 풉니다.
+1. 공개 저장소를 다음 `custom_nodes` 위치에 복제합니다. ZIP을 내려받은 경우에도 같은 폴더명이 되도록 압축을 풉니다.
 
 ```bash
 git clone https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector.git ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector
@@ -416,12 +416,20 @@ python scripts/comfy_integration_smoke.py
 
 ---
 
-## 15. 비공개 베타 피드백
+## 15. 공개 미리보기 피드백
 
 재현 가능한 오류·호환성 문제·사용 중 막힌 지점은 [GitHub Issues](https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector/issues)에 남깁니다. 모델 파일, 개인 workflow 원본, 생성 이미지처럼 공개하면 안 되는 자료는 Issue에 첨부하지 말고 재현 가능한 최소 조건만 기록합니다.
 
 ---
 
+## 16. 후원
+
+전체 소스와 기능은 아래 라이선스에 따라 공개됩니다. 이 도구가 제작에 도움이 되었다면 [GitHub Sponsors](https://github.com/sponsors/lLcrowe)에서 공개 개발·문서화·테스트·유지보수를 선택적으로 후원할 수 있습니다.
+
+---
+
 ## 라이선스
 
-[MIT License](LICENSE)로 배포합니다.
+Copyright (C) 2026 lLcrowe.
+
+[GNU 일반 공중 사용 허가서 버전 3.0 전용(GNU General Public License v3.0 only)](LICENSE), 즉 `GPL-3.0-only`로 배포합니다. 저장소에 포함되지 않는 호스트·개발 도구 구성요소는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 봅니다.

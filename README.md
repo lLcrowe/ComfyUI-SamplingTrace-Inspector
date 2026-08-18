@@ -4,7 +4,7 @@
 
 Inspect how a ComfyUI image forms over time: execution flow, sampling steps, latent state, predicted x0, sigma, CFG behavior, ControlNet residuals, model patches, and prompt-word attention in one panel.
 
-> Current status: **0.4.0b1 private beta candidate**. The package has passed internal acceptance in a separate ComfyUI, user, input, output, and temporary environment cloned from the private repository. A clean installation outside the development machine and a first external user's Quick Start remain unverified. See `docs/LOCAL_VALIDATION.md` and `docs/BUILD_VALIDATION.md`.
+> Current status: **0.4.0b2 public preview**. The package has passed internal acceptance in a separate ComfyUI, user, input, output, and temporary environment. A clean installation outside the development machine and a first external user's Quick Start remain unverified. See `docs/LOCAL_VALIDATION.md` and `docs/BUILD_VALIDATION.md`.
 
 ---
 
@@ -104,7 +104,7 @@ These files help determine whether installed ControlNet, IPAdapter, LoRA, Detail
 
 ## 4. Installation
 
-1. Private beta users must authenticate with GitHub and clone the repository into `custom_nodes`. If you receive a ZIP, extract it with the same final folder name.
+1. Clone the public repository into `custom_nodes`. If you download a ZIP, extract it with the same final folder name.
 
 ```bash
 git clone https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector.git ComfyUI/custom_nodes/ComfyUI-SamplingTrace-Inspector
@@ -430,7 +430,7 @@ Follow `docs/TEST_PLAN.md` for real generation validation.
 
 ---
 
-## 15. Private beta feedback
+## 15. Public preview feedback
 
 Use [GitHub Issues](https://github.com/lLcrowe/ComfyUI-SamplingTrace-Inspector/issues) for reproducible defects, compatibility problems, and unclear setup steps.
 
@@ -438,6 +438,14 @@ Do not attach model files, private workflow originals, generated images, prompt 
 
 ---
 
+## 16. Sponsorship
+
+The complete source and features remain available under the license below. If this tool helps your work, you can optionally support its public development, documentation, testing, and maintenance through [GitHub Sponsors](https://github.com/sponsors/lLcrowe).
+
+---
+
 ## License
 
-Released under the [MIT License](LICENSE).
+Copyright (C) 2026 lLcrowe.
+
+Released under the [GNU General Public License v3.0 only](LICENSE) (`GPL-3.0-only`). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for host and development-time components that are not bundled with this repository.

@@ -2,7 +2,16 @@
 
 ## 판정
 
-현재 패키지는 **0.4.0b1 비공개 베타 후보**입니다. 독립 정적 검사와 기존 로컬 ComfyUI의 주요 기능 경로에 더해, 비공개 저장소 fresh clone을 별도 ComfyUI root·사용자·출력·포트에서 내부 수용 테스트했습니다. 이 결과는 현재 머신의 비공개 후보 증거이며, 외부 clean install이나 공개 베타 준비 완료를 뜻하지 않습니다.
+현재 패키지는 **0.4.0b2 공개 미리보기(public preview)**입니다. 독립 정적 검사와 기존 로컬 ComfyUI의 주요 기능 경로에 더해, 저장소 복제본을 별도 ComfyUI root·사용자·출력·포트에서 내부 수용 테스트했습니다. 이 결과는 현재 머신의 공개 미리보기 근거이며, 외부 새 설치(clean install)나 공개 베타 완료·1.0을 뜻하지 않습니다.
+
+### 2026-08-19 공개 전환 검증
+
+- 라이선스: `LICENSE`, `pyproject.toml`, 영문·한글 README를 `GPL-3.0-only`로 통일
+- 제3자 구성: 저장소에 vendored source·binary·model·font·media 없음; 호스트 및 개발 도구는 `THIRD_PARTY_NOTICES.md`에 분리 고지
+- 민감정보: 현재 추적 파일과 전체 Git 기록에서 토큰·개인 키·고정 로컬 사용자 경로 패턴 미검출
+- 경로 안전: Run ID를 제한 문자로 검증하고 artifact 경로가 Run의 `artifacts` 디렉터리를 벗어나지 못하도록 resolve 후 부모 경계를 검사
+- 자동 검사: ComfyUI embedded Python 3.12.10에서 `pytest` 74개 PASS, Python compile PASS, JavaScript syntax PASS, `git diff --check` PASS
+- 공개 경계: ComfyUI 서버를 외부에 직접 노출하지 않도록 README·`SECURITY.md`에 접근 경계를 명시
 
 ---
 
