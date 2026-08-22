@@ -98,3 +98,67 @@ def test_session_persists_complete_run(monkeypatch, tmp_path: Path):
     assert (store.run_directory(session.run_id) / "report.md").exists()
     assert (store.run_directory(session.run_id) / "report.html").exists()
     assert len(list((store.run_directory(session.run_id) / "artifacts").glob("*.jpg"))) == 2
+
+
+def test_session_captures_each_batch_item_independently(monkeypatch, tmp_path: Path):
+    import trace_inspector.session as session_module
+
+    store = TraceStore(tmp_path / "runs")
+    monkeypatch.setattr(session_module, "STORE", store)
+    options = TraceOptions(
+        mode="advanced",
+        label="batch-e2e",
+        preview_every=1,
+        preview_max_side=128,
+        preview_format="JPEG",
+        preview_quality=80,
+        persist_previews=True,
+        persist_tensor_stats=True,
+        max_tensor_samples=128,
+    )
+    session = TraceSession.create(
+        node_id="batch-node",
+        options=options,
+        prompt={},
+        extra_pnginfo={},
+        prompt_id="prompt-batch-e2e",
+    )
+    session.begin_sampling(
+        noise=torch.randn(3, 4, 8, 8),
+        latent_image=torch.zeros(3, 4, 8, 8),
+        sampler=object(),
+        sigmas=torch.tensor([1.0, 0.5, 0.0]),
+        seed=77,
+    )
+
+    for step in range(2):
+        levels = torch.tensor([0.1 + step * 0.1, 0.4 + step * 0.1, 0.8 + step * 0.1])
+        x0 = levels[:, None, None, None].expand(3, 4, 8, 8).clone()
+        session.capture_step(
+            step=step,
+            x0=x0,
+            x=x0 + 0.05,
+            total_steps=2,
+            previewer=FakePreviewer(),
+        )
+
+    session.end_sampling(status="success")
+    session.finalize(status="success")
+
+    run = store.get_run(session.run_id, include_steps=True)
+    assert run is not None
+    assert run["segments"][0]["batchSize"] == 3
+    assert len(run["steps"]) == 2
+    assert all(step["batchSize"] == 3 for step in run["steps"])
+    assert all(len(step["batchItems"]) == 3 for step in run["steps"])
+    assert [item["batchIndex"] for item in run["steps"][0]["batchItems"]] == [0, 1, 2]
+    assert [item["x0"]["shape"] for item in run["steps"][0]["batchItems"]] == [
+        [1, 4, 8, 8],
+        [1, 4, 8, 8],
+        [1, 4, 8, 8],
+    ]
+    assert [round(item["x0"]["mean"], 2) for item in run["steps"][0]["batchItems"]] == [0.1, 0.4, 0.8]
+    assert all(item["previewChange"] is None for item in run["steps"][0]["batchItems"])
+    assert all(item["previewChange"] is not None for item in run["steps"][1]["batchItems"])
+    assert run["steps"][0]["previewUrl"] == run["steps"][0]["batchItems"][0]["previewUrl"]
+    assert len(list((store.run_directory(session.run_id) / "artifacts").glob("*.jpg"))) == 6

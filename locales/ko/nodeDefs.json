@@ -1,4 +1,36 @@
 {
+  "ComfyTraceOneNode": {
+    "display_name": "샘플링 추적 · 단일 노드 설정",
+    "description": "권장 연결입니다. 최종 MODEL과 체크포인트 CLIP을 한 노드에 넣고 MODEL은 샘플러로, CLIP은 긍정·부정 Text Encode 양쪽으로 연결하면 같은 Run에서 모델과 실제 프롬프트 토큰화를 추적합니다.",
+    "inputs": {
+      "final_model": {
+        "name": "① 최종 MODEL",
+        "tooltip": "LoRA, IPAdapter 등 MODEL 패치를 모두 적용한 최종 MODEL을 연결하세요."
+      },
+      "checkpoint_clip": {
+        "name": "② 체크포인트 CLIP",
+        "tooltip": "Checkpoint Loader의 CLIP 출력을 연결하세요."
+      },
+      "trace_preset": {
+        "name": "추적 수집 수준",
+        "tooltip": "노드의 추적 설정 팝업에서 Basic 또는 Advanced를 선택합니다. 새 워크플로는 Basic으로 시작합니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "③ 샘플러로",
+        "tooltip": "추적 기능이 부착된 MODEL입니다. 첫 샘플러의 model 입력에 연결하세요."
+      },
+      "1": {
+        "name": "④ 긍정·부정 Text Encode로",
+        "tooltip": "이 CLIP 출력 하나에서 선을 두 개 빼서 긍정·부정 Text Encode의 clip 입력 양쪽에 연결하세요."
+      },
+      "2": {
+        "name": "선택 · 고급 연동",
+        "tooltip": "기존 워크플로 호환이나 내부 진단 도구에서만 사용하는 선택 추적 세션입니다. 일반 사용에서는 연결하지 않아도 됩니다."
+      }
+    }
+  },
   "ComfyTraceClip": {
     "display_name": "샘플링 추적 CLIP · 긍정/부정 양쪽 연결",
     "description": "① 체크포인트 CLIP을 입력하고 ② 같은 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결한 뒤 ③ 프롬프트 추적을 샘플링 추적 모델에 연결합니다.",

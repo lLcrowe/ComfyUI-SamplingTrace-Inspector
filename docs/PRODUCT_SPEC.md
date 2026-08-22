@@ -141,6 +141,7 @@ Trace 오류는 기록하되 generation 경로로 전파하지 않습니다.
 - x / x0 Tensor summary
 - Preview
 - Preview change score
+- 한 Run 안의 배치 항목별 x / x0 summary, Preview, Preview change
 
 ### Runtime Influence
 - CFG delta
@@ -177,6 +178,7 @@ Trace 오류는 기록하되 generation 경로로 전파하지 않습니다.
 
 ### Structured
 - Preview와 Sigma/x0/CFG/Control이 같은 Step record에 연결됩니다.
+- 여러 이미지 배치는 sampler segment를 나누지 않고 같은 Step의 배치 항목으로 연결됩니다.
 
 ### Established
 - ControlNet/LoRA/IPAdapter/KSampler 역할이 Adapter로 설명됩니다.

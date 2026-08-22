@@ -54,6 +54,7 @@ def test_korean_locale_covers_every_custom_node():
     main = json.loads((plugin_root / "locales" / "ko" / "main.json").read_text(encoding="utf-8"))
     node_defs = json.loads((plugin_root / "locales" / "ko" / "nodeDefs.json").read_text(encoding="utf-8"))
     expected_nodes = {
+        "ComfyTraceOneNode",
         "ComfyTraceClip",
         "ComfyTraceModel",
         "ComfyTraceExport",
@@ -73,8 +74,14 @@ def test_korean_locale_covers_every_custom_node():
         assert definition["inputs"]
         assert definition["outputs"]
 
+    one_node = node_defs["ComfyTraceOneNode"]
     clip = node_defs["ComfyTraceClip"]
     model = node_defs["ComfyTraceModel"]
+    assert "단일 노드" in one_node["display_name"]
+    assert one_node["inputs"]["final_model"]["name"].startswith("①")
+    assert one_node["inputs"]["checkpoint_clip"]["name"].startswith("②")
+    assert one_node["outputs"]["0"]["name"].startswith("③")
+    assert one_node["outputs"]["1"]["name"].startswith("④")
     assert "긍정/부정 양쪽 연결" in clip["display_name"]
     assert clip["inputs"]["clip"]["name"].startswith("①")
     assert clip["outputs"]["0"]["name"].startswith("②")
@@ -117,8 +124,15 @@ def test_panel_uses_comfy_locale_and_hides_uncaptured_preview_steps():
     assert "state.liveEventsExpanded = eventDetails.open" in panel_script
     assert "function promptWordGroups(run, prompts, role" in panel_script
     assert "promptWordValues(words, role)" in panel_script
-    assert "Sampling Trace CLIP의 CLIP 출력을 긍정·부정 Text Encode에 연결" in panel_script
+    assert "단일 노드 설정의 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결" in panel_script
     assert 'localeText("입력 프롬프트·CLIP 토큰 상세"' not in panel_script
+    assert "selectedBatchIndex: 0" in panel_script
+    assert "function batchItemsForStep(step)" in panel_script
+    assert "function batchCountForRun(run)" in panel_script
+    assert "segment?.latentInput?.shape?.[0]" in panel_script
+    assert "function createBatchSelector(run)" in panel_script
+    assert 'localeText("배치별 추적", "Batch trace")' in panel_script
+    assert "selectedBatchStep(frame)" in panel_script
 
 
 def test_trace_socket_names_follow_comfy_locale_without_changing_input_keys():
@@ -128,6 +142,11 @@ def test_trace_socket_names_follow_comfy_locale_without_changing_input_keys():
     assert "function applyLocalizedTraceSlotNames(node)" in localization_script
     assert "function traceNodeClass(node)" in localization_script
     assert "node?.comfyClass || node?.type || node?.constructor?.nodeData?.name" in localization_script
+    assert 'nodeClass === "ComfyTraceOneNode"' in localization_script
+    assert 'localeText("① 최종 MODEL", "① Final MODEL")' in localization_script
+    assert 'localeText("② 체크포인트 CLIP", "② Checkpoint CLIP")' in localization_script
+    assert 'localeText("③ 샘플러로", "③ To Sampler")' in localization_script
+    assert 'localeText("④ 긍정·부정 Text Encode로", "④ To Positive + Negative Text Encode")' in localization_script
     assert 'nodeClass === "ComfyTraceClip"' in localization_script
     assert 'localeText("① 체크포인트 CLIP", "① Checkpoint CLIP")' in localization_script
     assert 'localeText("② 긍정·부정 Text Encode", "② Positive + Negative Text Encode")' in localization_script
@@ -141,6 +160,24 @@ def test_trace_socket_names_follow_comfy_locale_without_changing_input_keys():
     assert "async nodeCreated(node)" in localization_script
     assert "loadedGraphNode(node)" in localization_script
 
+
+def test_one_node_settings_popup_keeps_capture_widget_hidden_and_serialized():
+    plugin_root = Path(__file__).resolve().parents[1]
+    settings_script = (plugin_root / "web" / "one_node_settings.js").read_text(encoding="utf-8")
+
+    assert 'const PRESET_WIDGET = "trace_preset"' in settings_script
+    assert 'widget.type = "hidden"' in settings_script
+    assert "widget.computeSize = () => [0, -4]" in settings_script
+    assert "widget.serializeValue" not in settings_script
+    assert 'button.__ctiSettingsButton = SETTINGS_BUTTON' in settings_script
+    assert '"button",\n      buttonLabel(node)' in settings_script
+    assert '"basic"' in settings_script
+    assert '"advanced"' in settings_script
+    assert 'dialog.setAttribute("aria-modal", "true")' in settings_script
+    assert 'if (event.key === "Escape") closePopup()' in settings_script
+    assert "markWorkflowChanged(node)" in settings_script
+    assert 'localeText("배치별 추적 · 자동", "Per-item batch trace · Automatic")' in settings_script
+    assert "추적 패널의 1/N 선택기" in settings_script
 
 def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_path: Path):
     plugin_root = Path(__file__).resolve().parents[1]
@@ -163,8 +200,34 @@ def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_pa
     sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
+        assert "ComfyTraceOneNode" in module.NODE_CLASS_MAPPINGS
         assert "ComfyTraceModel" in module.NODE_CLASS_MAPPINGS
-        assert len(module.NODE_CLASS_MAPPINGS) == 9
+        assert len(module.NODE_CLASS_MAPPINGS) == 10
+        assert getattr(module.NODE_CLASS_MAPPINGS["ComfyTraceOneNode"], "DEPRECATED", False) is False
+        visible_nodes = [
+            name
+            for name, node_class in module.NODE_CLASS_MAPPINGS.items()
+            if not getattr(node_class, "DEPRECATED", False)
+        ]
+        assert visible_nodes == ["ComfyTraceOneNode"]
+        assert module.NODE_CLASS_MAPPINGS["ComfyTraceOneNode"].RETURN_TYPES == (
+            "MODEL",
+            "CLIP",
+            "TRACE_SESSION",
+        )
+        assert module.NODE_CLASS_MAPPINGS["ComfyTraceOneNode"].RETURN_NAMES == (
+            "③ 샘플러로",
+            "④ 긍정·부정 Text Encode로",
+            "선택 · 고급 연동",
+        )
+        one_inputs = module.NODE_CLASS_MAPPINGS["ComfyTraceOneNode"].INPUT_TYPES()
+        assert one_inputs["required"]["final_model"][1]["display_name"] == "① 최종 MODEL"
+        assert one_inputs["required"]["checkpoint_clip"][1]["display_name"] == "② 체크포인트 CLIP"
+        assert set(one_inputs["required"]) == {"final_model", "checkpoint_clip"}
+        assert one_inputs["optional"]["trace_preset"] == (
+            ("basic", "advanced"),
+            {"default": "basic"},
+        )
         assert module.NODE_CLASS_MAPPINGS["ComfyTraceClip"].RETURN_NAMES == (
             "② 긍정·부정 Text Encode",
             "③ CLIP 프롬프트 추적 보내기",
@@ -175,6 +238,53 @@ def test_custom_node_package_imports_with_comfy_server_stubs(monkeypatch, tmp_pa
         assert module.NODE_CLASS_MAPPINGS["ComfyTraceModel"].INPUT_TYPES()["optional"]["prompt_trace"][1][
             "display_name"
         ] == "③ CLIP 프롬프트 추적 받기"
+
+        delegated = {}
+        one_node_class = module.NODE_CLASS_MAPPINGS["ComfyTraceOneNode"]
+        model_node_class = module.NODE_CLASS_MAPPINGS["ComfyTraceModel"]
+        original_model_attach = model_node_class.attach
+
+        def fake_model_attach(_self, **kwargs):
+            delegated.update(kwargs)
+            return "traced-model", "shared-session"
+
+        model_node_class.attach = fake_model_attach
+        try:
+            original_clip = object()
+            one_result = one_node_class().attach(
+                final_model="final-model",
+                checkpoint_clip=original_clip,
+                unique_id="42",
+                prompt={"7": {"class_type": "CLIPTextEncode", "inputs": {"text": "hello"}}},
+            )
+            delegated_basic = delegated.copy()
+            delegated.clear()
+            one_node_class().attach(
+                final_model="final-model",
+                checkpoint_clip=original_clip,
+                unique_id="43",
+                trace_preset="advanced",
+            )
+            delegated_advanced = delegated.copy()
+        finally:
+            model_node_class.attach = original_model_attach
+
+        assert one_result[0] == "traced-model"
+        assert type(one_result[1]).__name__ == "TracingClipProxy"
+        assert one_result[1]._clip is original_clip
+        assert one_result[2] == "shared-session"
+        assert delegated_basic["model"] == "final-model"
+        assert delegated_basic["mode"] == "basic"
+        assert delegated_basic["preview_every"] == 1
+        assert delegated_basic["preview_max_side"] == 768
+        assert delegated_basic["preview_quality"] == 85
+        assert delegated_basic["persist_previews"] is True
+        assert delegated_basic["persist_tensor_stats"] is False
+        assert delegated_basic["preview_decoder"] == "clear"
+        assert delegated_basic["prompt_trace"] is one_result[1]._capture
+        assert delegated_basic["prompt_trace"].trace_node_id == "42"
+        assert delegated_advanced["mode"] == "advanced"
+        assert delegated_advanced["persist_tensor_stats"] is True
         assert all(
             getattr(node_class, "DESCRIPTION", "").strip()
             for node_class in module.NODE_CLASS_MAPPINGS.values()

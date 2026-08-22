@@ -46,8 +46,75 @@ def _record_probe(session: TraceSession | None, payload: dict[str, Any]) -> None
         emit("trace_inspector.probe", payload)
 
 
+class ComfyTraceOneNode:
+    """Start MODEL and prompt tracing from one workflow node."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "final_model": ("MODEL", {"display_name": "① 최종 MODEL"}),
+                "checkpoint_clip": ("CLIP", {"display_name": "② 체크포인트 CLIP"}),
+            },
+            "optional": {
+                "trace_preset": (TRACE_MODES, {"default": "basic"}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    RETURN_TYPES = ("MODEL", "CLIP", "TRACE_SESSION")
+    RETURN_NAMES = ("③ 샘플러로", "④ 긍정·부정 Text Encode로", "선택 · 고급 연동")
+    FUNCTION = "attach"
+    CATEGORY = "Sampling Trace Inspector"
+    DESCRIPTION = (
+        "Recommended one-node setup. Connect the final MODEL and Checkpoint CLIP here, "
+        "then send MODEL to the sampler and fan CLIP out to both Positive and Negative Text Encode nodes. "
+        "Use the Trace Settings popup to choose Basic or Advanced capture. MODEL sampling and actual CLIP "
+        "tokenize calls are recorded in the same Run without a prompt_trace wire."
+    )
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("nan")
+
+    def attach(
+        self,
+        final_model: Any,
+        checkpoint_clip: Any,
+        unique_id: str,
+        prompt: Any = None,
+        extra_pnginfo: Any = None,
+        trace_preset: str = "basic",
+    ):
+        preset = "advanced" if str(trace_preset).strip().lower() == "advanced" else "basic"
+        capture = PromptTokenCapture(prompt, trace_node_id=str(unique_id))
+        traced_model, session = ComfyTraceModel().attach(
+            model=final_model,
+            mode=preset,
+            label="",
+            preview_every=1,
+            preview_max_side=768,
+            preview_format="JPEG",
+            preview_quality=85,
+            persist_previews=True,
+            persist_tensor_stats=preset == "advanced",
+            unique_id=unique_id,
+            prompt=prompt,
+            extra_pnginfo=extra_pnginfo,
+            preview_decoder="clear",
+            prompt_trace=capture,
+        )
+        return traced_model, TracingClipProxy(checkpoint_clip, capture), session
+
+
 class ComfyTraceClip:
     """Pass CLIP through a non-mutating proxy and capture its actual tokenize calls."""
+
+    DEPRECATED = True
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -82,6 +149,8 @@ class ComfyTraceClip:
 
 class ComfyTraceModel:
     """Clone a MODEL and attach non-destructive sampling/model wrappers."""
+
+    DEPRECATED = True
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -190,6 +259,8 @@ class ComfyTraceModel:
 class ComfyTraceExport:
     """Finalize a trace run and expose its report directory."""
 
+    DEPRECATED = True
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -217,6 +288,8 @@ class ComfyTraceExport:
 
 class ComfyTraceNote:
     """Save a user note into the connected trace run."""
+
+    DEPRECATED = True
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -255,6 +328,7 @@ class ComfyTraceNote:
 
 
 class _ProbeBase:
+    DEPRECATED = True
     RETURN_TYPES: tuple[str, ...] = ()
     RETURN_NAMES: tuple[str, ...] = ()
     FUNCTION = "probe"
@@ -424,6 +498,7 @@ class ComfyTraceModelSnapshot(_ProbeBase):
 
 
 NODE_CLASS_MAPPINGS = {
+    "ComfyTraceOneNode": ComfyTraceOneNode,
     "ComfyTraceClip": ComfyTraceClip,
     "ComfyTraceModel": ComfyTraceModel,
     "ComfyTraceExport": ComfyTraceExport,
@@ -436,6 +511,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "ComfyTraceOneNode": "Sampling Trace · One Node Setup",
     "ComfyTraceClip": "Sampling Trace CLIP · Connect Both Prompts",
     "ComfyTraceModel": "Sampling Trace Model",
     "ComfyTraceExport": "Sampling Trace Export / Finalize",

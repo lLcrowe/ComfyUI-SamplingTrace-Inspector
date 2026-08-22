@@ -27,6 +27,27 @@ function traceNodeClass(node) {
 
 function applyLocalizedTraceSlotNames(node) {
   const nodeClass = traceNodeClass(node);
+  if (nodeClass === "ComfyTraceOneNode") {
+    const inputNames = {
+      final_model: localeText("① 최종 MODEL", "① Final MODEL"),
+      checkpoint_clip: localeText("② 체크포인트 CLIP", "② Checkpoint CLIP"),
+    };
+    for (const input of node.inputs || []) {
+      if (inputNames[input.name]) setSlotDisplayName(input, inputNames[input.name]);
+    }
+
+    const outputNames = [
+      localeText("③ 샘플러로", "③ To Sampler"),
+      localeText("④ 긍정·부정 Text Encode로", "④ To Positive + Negative Text Encode"),
+      localeText("선택 · 고급 연동", "Optional · Advanced Integration"),
+    ];
+    for (const [index, output] of (node.outputs || []).entries()) {
+      if (outputNames[index]) setSlotDisplayName(output, outputNames[index], { rename: true });
+    }
+    node.setDirtyCanvas?.(true, true);
+    return;
+  }
+
   if (nodeClass === "ComfyTraceClip") {
     const clipInput = (node.inputs || []).find((slot) => slot.name === "clip");
     setSlotDisplayName(
@@ -88,7 +109,7 @@ app.registerExtension({
   name: EXTENSION_NAME,
   async beforeRegisterNodeDef(nodeType, nodeData) {
     const nodeClass = nodeData?.name || nodeType?.comfyClass || nodeType?.type;
-    if (["ComfyTraceClip", "ComfyTraceModel"].includes(nodeClass)) {
+    if (["ComfyTraceOneNode", "ComfyTraceClip", "ComfyTraceModel"].includes(nodeClass)) {
       installLocalizedTraceSlotLifecycle(nodeType);
     }
   },

@@ -34,6 +34,7 @@ const state = {
   selectedRunId: null,
   selectedRun: null,
   selectedStepIndex: 0,
+  selectedBatchIndex: 0,
   currentPromptId: null,
   currentRunId: null,
   currentRunIds: new Set(),
@@ -304,6 +305,10 @@ async function loadRun(runId, resetStep = true) {
     if (state.selectedRunId && state.selectedRunId !== runId) state.noteNotice = null;
     state.selectedRun = await requestJson(`/trace-inspector/runs/${runId}`);
     state.selectedRunId = runId;
+    const availableBatchCount = batchCountForRun(state.selectedRun);
+    state.selectedBatchIndex = resetStep
+      ? 0
+      : Math.max(0, Math.min(state.selectedBatchIndex, availableBatchCount - 1));
     if (resetStep || !state.selectedNodeId) {
       state.selectedNodeId = String(state.selectedRun.nodeId || "");
     }
@@ -383,8 +388,62 @@ function semanticRoleLabel(role) {
 function previewStepIndexes(steps) {
   return steps
     .map((step, index) => ({ step, index }))
-    .filter(({ step }) => Boolean(step.previewUrl))
+    .filter(({ step }) => Boolean(selectedBatchItem(step)?.previewUrl))
     .map(({ index }) => index);
+}
+
+function batchItemsForStep(step) {
+  if (Array.isArray(step?.batchItems) && step.batchItems.length) return step.batchItems;
+  if (!step) return [];
+  return [{
+    batchIndex: 0,
+    x: step.x,
+    x0: step.x0,
+    previewFile: step.previewFile,
+    previewUrl: step.previewUrl,
+    previewSize: step.previewSize,
+    previewChange: step.previewChange,
+  }];
+}
+
+function batchCountForRun(run) {
+  const segmentCounts = (run?.segments || []).map((segment) => Math.max(
+    Number(segment?.batchSize) || 0,
+    Number(segment?.latentInput?.shape?.[0]) || 0,
+    Number(segment?.noise?.shape?.[0]) || 0,
+  ));
+  const stepCounts = (run?.steps || []).map((step) => Math.max(
+    Number(step?.batchSize) || 0,
+    Number(step?.x0?.shape?.[0]) || 0,
+    Number(step?.x?.shape?.[0]) || 0,
+    batchItemsForStep(step).length,
+  ));
+  return Math.max(1, ...segmentCounts, ...stepCounts);
+}
+
+function batchIndexAvailable(run, batchIndex) {
+  return (run?.steps || []).some((step) => batchItemsForStep(step).some(
+    (item) => Number(item?.batchIndex) === batchIndex,
+  ));
+}
+
+function selectedBatchItem(step) {
+  const items = batchItemsForStep(step);
+  return items.find((item) => Number(item?.batchIndex) === state.selectedBatchIndex)
+    || items[state.selectedBatchIndex]
+    || null;
+}
+
+function selectedBatchStep(step) {
+  const item = selectedBatchItem(step);
+  if (!step || !item) return step;
+  return {
+    ...step,
+    ...item,
+    batchIndex: Number(item.batchIndex) || 0,
+    batchSize: Math.max(Number(step.batchSize) || 0, batchItemsForStep(step).length, 1),
+    batchItems: undefined,
+  };
 }
 
 function nearestPreviewStepIndex(indexes, selectedIndex) {
@@ -1064,7 +1123,11 @@ function createStepVisual(step) {
   const overlay = el("div", "cti-preview-overlay");
   overlay.append(
     el("strong", "cti-preview-step", `${localeText("스텝", "STEP")} ${step.step + 1} / ${step.totalSteps}`),
-    el("span", "cti-preview-meta", `σ ${formatNumber(step.sigma, 3)} · Δ ${formatNumber(step.previewChange, 4)}`),
+    el(
+      "span",
+      "cti-preview-meta",
+      `${localeText("배치", "BATCH")} ${(step.batchIndex ?? 0) + 1}/${step.batchSize || 1} · σ ${formatNumber(step.sigma, 3)} · Δ ${formatNumber(step.previewChange, 4)}`,
+    ),
   );
   imageWrap.append(overlay);
 
@@ -1095,16 +1158,71 @@ function refreshSelectedStepSurfaces(viewerContainer, run) {
   const steps = run?.steps || [];
   const step = steps[state.selectedStepIndex];
   if (!step) return;
+  const selectedStep = selectedBatchStep(step);
 
-  viewerContainer.querySelector("[data-role='step-visual']")?.replaceWith(createStepVisual(step));
+  viewerContainer.querySelector("[data-role='step-visual']")?.replaceWith(createStepVisual(selectedStep));
   for (const frame of viewerContainer.querySelectorAll(".cti-frame[data-step-index]")) {
     frame.classList.toggle("selected", Number(frame.dataset.stepIndex) === state.selectedStepIndex);
   }
   const rawStep = viewerContainer.querySelector("[data-role='raw-step']");
-  if (rawStep) rawStep.textContent = JSON.stringify(step, null, 2);
+  if (rawStep) rawStep.textContent = JSON.stringify(selectedStep, null, 2);
 
   const promptTokens = state.root?.querySelector("[data-role='prompt-tokens']");
   if (promptTokens) renderPromptTokens(promptTokens, run);
+}
+
+function createBatchSelector(run) {
+  const batchCount = batchCountForRun(run);
+  const selector = el("div", "cti-batch-selector");
+  const identity = el("div", "cti-batch-identity");
+  identity.append(
+    el("strong", "", localeText("배치별 추적", "Batch trace")),
+    el(
+      "span",
+      "",
+      batchCount > 1
+        ? localeText(
+          `${batchCount}장을 각각 선택해 같은 스텝의 변화를 확인합니다.`,
+          `Inspect the same denoise step for each of ${batchCount} images.`,
+        )
+        : localeText("이 실행은 단일 이미지 배치입니다.", "This run contains one batch item."),
+    ),
+  );
+  selector.append(identity);
+
+  const choices = el("div", "cti-batch-choices");
+  for (let batchIndex = 0; batchIndex < batchCount; batchIndex += 1) {
+    const available = batchIndexAvailable(run, batchIndex);
+    const choice = el(
+      "button",
+      `cti-batch-choice ${batchIndex === state.selectedBatchIndex ? "selected" : ""}`,
+      `${batchIndex + 1}/${batchCount}`,
+    );
+    choice.type = "button";
+    choice.disabled = !available;
+    choice.setAttribute("aria-pressed", String(batchIndex === state.selectedBatchIndex));
+    choice.setAttribute("aria-label", localeText(
+      `배치 ${batchIndex + 1}/${batchCount} 보기`,
+      `View batch item ${batchIndex + 1} of ${batchCount}`,
+    ));
+    if (!available) {
+      choice.title = localeText(
+        "이 실행은 개별 배치 추적 기능을 추가하기 전에 기록됐습니다. 워크플로를 다시 실행하면 활성화됩니다.",
+        "This run predates per-item batch capture. Run the workflow again to enable it.",
+      );
+    }
+    choice.addEventListener("click", () => {
+      state.selectedBatchIndex = batchIndex;
+      const previewIndexes = previewStepIndexes(run?.steps || []);
+      if (previewIndexes.length && !previewIndexes.includes(state.selectedStepIndex)) {
+        state.selectedStepIndex = nearestPreviewStepIndex(previewIndexes, state.selectedStepIndex);
+      }
+      render();
+    });
+    choices.append(choice);
+  }
+  selector.append(choices);
+  return selector;
 }
 
 function renderStepViewer(container, run) {
@@ -1136,10 +1254,16 @@ function renderStepViewer(container, run) {
     return;
   }
 
+  container.append(createBatchSelector(run));
+
   if (!previewIndexes.length) {
     container.append(el("div", "cti-empty", localeText(
-      "저장된 미리보기가 없습니다. 샘플링 추적 모델에서 미리보기 저장을 켠 뒤 실행하세요.",
-      "No decoded previews were saved. Enable preview persistence on Sampling Trace Model, then run the workflow.",
+      state.selectedBatchIndex > 0
+        ? "선택한 배치 항목의 기록이 없습니다. 이전 형식의 실행이라면 워크플로를 한 번 다시 실행하세요."
+        : "저장된 미리보기가 없습니다. 단일 노드 설정에서 미리보기 수집을 확인한 뒤 실행하세요.",
+      state.selectedBatchIndex > 0
+        ? "The selected batch item was not captured. If this is an older run, run the workflow once more."
+        : "No decoded previews were saved. Check preview capture in One Node Setup, then run the workflow.",
     )));
     return;
   }
@@ -1149,21 +1273,23 @@ function renderStepViewer(container, run) {
     state.selectedStepIndex = nearestPreviewStepIndex(previewIndexes, state.selectedStepIndex);
   }
   const step = steps[state.selectedStepIndex];
-  container.append(createStepVisual(step));
+  const selectedStep = selectedBatchStep(step);
+  container.append(createStepVisual(selectedStep));
 
   const filmstrip = el("div", "cti-filmstrip");
   for (const index of previewIndexes) {
     const frame = steps[index];
+    const selectedFrame = selectedBatchStep(frame);
     const frameButton = el("button", `cti-frame ${index === state.selectedStepIndex ? "selected" : ""}`);
     frameButton.type = "button";
     frameButton.dataset.stepIndex = String(index);
-    frameButton.title = localeText(`스텝 ${frame.step + 1} · Sigma ${formatNumber(frame.sigma, 3)} · 변화 ${formatNumber(frame.previewChange, 4)}`, `Step ${frame.step + 1} · sigma ${formatNumber(frame.sigma, 3)} · change ${formatNumber(frame.previewChange, 4)}`);
+    frameButton.title = localeText(`배치 ${state.selectedBatchIndex + 1} · 스텝 ${frame.step + 1} · Sigma ${formatNumber(frame.sigma, 3)} · 변화 ${formatNumber(selectedFrame.previewChange, 4)}`, `Batch ${state.selectedBatchIndex + 1} · step ${frame.step + 1} · sigma ${formatNumber(frame.sigma, 3)} · change ${formatNumber(selectedFrame.previewChange, 4)}`);
     frameButton.addEventListener("click", () => {
       state.selectedStepIndex = index;
       render();
     });
     const thumb = document.createElement("img");
-    thumb.src = imageUrl(frame.previewUrl);
+    thumb.src = imageUrl(selectedFrame.previewUrl);
     thumb.alt = "";
     frameButton.append(thumb);
     frameButton.append(el("span", "cti-frame-index", String(frame.step + 1)));
@@ -1202,7 +1328,7 @@ function renderStepViewer(container, run) {
   details.append(el("summary", "", localeText("원시 텐서와 스텝 수치", "Raw tensors and step metrics")));
   const pre = el("pre", "cti-json");
   pre.dataset.role = "raw-step";
-  pre.textContent = JSON.stringify(step, null, 2);
+  pre.textContent = JSON.stringify(selectedStep, null, 2);
   details.append(pre);
   container.append(details);
 }
@@ -1842,8 +1968,8 @@ function renderPromptInfluence(container, run, prompts) {
         "div",
         "cti-inline-notice",
         localeText(
-          `이 실행에는 샘플러 ${roleName} 조건의 실제 CLIP 토큰이 없습니다. Sampling Trace CLIP의 CLIP 출력을 ${roleName} Text Encode의 clip 입력에도 연결한 뒤 다시 실행하세요. 현재 주의 수치는 단어 이름에 연결하지 않습니다.`,
-          `This run has no actual CLIP tokens for the sampler ${roleName} condition. Connect Sampling Trace CLIP's CLIP output to the ${roleName} Text Encode clip input and run again. Current attention values are not attached to word labels.`,
+          `이 실행에는 샘플러 ${roleName} 조건의 실제 CLIP 토큰이 없습니다. 단일 노드 설정의 CLIP 출력을 ${roleName} Text Encode의 clip 입력에도 연결한 뒤 다시 실행하세요. 현재 주의 수치는 단어 이름에 연결하지 않습니다.`,
+          `This run has no actual CLIP tokens for the sampler ${roleName} condition. Connect One Node Setup's CLIP output to the ${roleName} Text Encode clip input and run again. Current attention values are not attached to word labels.`,
         ),
       ));
       cards.append(card);
@@ -1939,7 +2065,7 @@ function renderPromptTokens(container, run) {
     if (capture.source === "traced_clip") {
       empty.append(
         el("strong", "", localeText("아직 실제 CLIP 호출이 기록되지 않았습니다.", "No actual CLIP call has been captured yet.")),
-        el("span", "", localeText("Sampling Trace CLIP의 CLIP 출력을 긍정·부정 Text Encode에 연결하고 prompt_trace를 Sampling Trace Model에 연결한 뒤 실행하세요.", "Connect Sampling Trace CLIP to both Positive and Negative Text Encode nodes, connect prompt_trace to Sampling Trace Model, then run the workflow.")),
+        el("span", "", localeText("단일 노드 설정의 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결한 뒤 실행하세요.", "Connect One Node Setup's CLIP output to both Positive and Negative Text Encode nodes, then run the workflow.")),
       );
     } else {
       empty.append(

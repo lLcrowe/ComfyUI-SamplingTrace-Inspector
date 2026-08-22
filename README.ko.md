@@ -4,7 +4,7 @@
 
 ComfyUI의 Preview (중간 미리보기)를 출발점으로, 생성 과정의 **노드 실행 흐름**, **Sampling Step (샘플링 단계)**, **Latent (잠재 표현 / 압축된 이미지 정보)**, **x0 (현재 예상 완성 Latent)**, **Sigma (현재 노이즈 강도)**, **CFG (조건 반영 강도)**, **ControlNet residual (제어 잔차)**을 한 타임라인에서 관찰하는 커스텀 노드 패키지입니다.
 
-> 현재 상태: **0.4.0b2 공개 미리보기(public preview)**. 배포본을 별도 ComfyUI·사용자·출력 환경에서 내부 수용 테스트했습니다. 이 작업 머신 밖의 새 설치(clean install)와 외부 첫 사용자의 빠른 시작(Quick Start) 완주는 아직 별도 검증 항목입니다. 상세 근거는 `docs/LOCAL_VALIDATION.md`와 `docs/BUILD_VALIDATION.md`를 봅니다.
+> 현재 상태: **0.4.0b3 공개 미리보기(public preview)**. 배포본을 별도 ComfyUI·사용자·출력 환경에서 내부 수용 테스트했습니다. 이 작업 머신 밖의 새 설치(clean install)와 외부 첫 사용자의 빠른 시작(Quick Start) 완주는 아직 별도 검증 항목입니다. 상세 근거는 `docs/LOCAL_VALIDATION.md`와 `docs/BUILD_VALIDATION.md`를 봅니다.
 
 ---
 
@@ -127,21 +127,13 @@ python scripts/static_check.py
 
 3. ComfyUI를 재시작합니다.
 
-4. 노드 검색에서 다음 노드를 찾습니다.
+4. 노드 검색에서 권장 설정 노드 하나를 찾습니다.
 
 ```text
-Sampling Trace Model
-Sampling Trace CLIP
-Sampling Trace Export / Finalize
-Sampling Trace Image
-Sampling Trace Latent
-Sampling Trace Mask
-Sampling Trace Conditioning
-Sampling Trace Model Snapshot
-Sampling Trace Note
+Sampling Trace · One Node Setup
 ```
 
-5. 최종 MODEL patch 뒤, KSampler 앞에 `Sampling Trace Model`을 연결합니다.
+5. 최종 MODEL patch 뒤에 `Sampling Trace · One Node Setup`을 추가합니다. 이 노드는 MODEL과 CLIP 소켓만 표시합니다. 노드의 작은 `추적 설정` 버튼을 눌러 팝업에서 `Basic`(기본값) 또는 `Advanced`를 선택한 뒤, MODEL 출력은 첫 샘플러로, CLIP 출력은 긍정·부정 Text Encode 양쪽으로 연결합니다.
 
 6. ComfyUI 하단의 `Sampling Trace Inspector` 패널을 엽니다.
 
@@ -151,22 +143,26 @@ Sampling Trace Note
 
 ```text
 [Checkpoint Loader]
-  ① CLIP ──→ [Sampling Trace CLIP · Connect Both Prompts]
-                   ② CLIP ──┬──→ Positive Text Encode
-                            └──→ Negative Text Encode
-                   ③ CLIP 프롬프트 추적 보내기 ──────────┐
-       MODEL                                             │
-         ↓                                               │
+  CLIP ───────────────────────────────────────────┐
+       MODEL                                      │
+         ↓                                        │
 [LoRA Loader]
          ↓
 [IPAdapter Advanced]
          ↓
-[Sampling Trace Model] ←─────────────────────────────────┘
-    MODEL ↓       └── TRACE_SESSION ──→ [Sampling Trace Export / Finalize] (선택)
-[KSampler]
+[Sampling Trace · One Node Setup] ←───────────────────────┘
+    MODEL ──→ [KSampler]
+    CLIP  ──┬──→ Positive Text Encode
+            └──→ Negative Text Encode
 ```
 
-`Sampling Trace CLIP`의 CLIP 출력을 긍정·부정 Text Encode 양쪽에 연결하고, `prompt_trace`를 `Sampling Trace Model`에 연결합니다. 원본 CLIP을 수정하지 않는 proxy가 실제 `tokenize()` 반환값을 그대로 통과시킨 뒤 호출 노드·원문·CLIP-L/G token ID·입력 가중치·단어 묶음을 같은 Run에 기록합니다. 기존 `Sampling Trace Model.clip` 입력은 이전 표준 재토큰화 방식의 호환용으로만 유지합니다.
+이 구성이 권장 경로입니다. 물리적인 추적 노드 하나가 최종 MODEL과 실제 CLIP `tokenize()` 호출을 같은 Run에 기록하므로 별도 `prompt_trace` 선이 필요 없습니다. 마지막 MODEL patch 뒤에 놓고 CLIP 출력 하나를 긍정·부정 Text Encode 양쪽으로 분기하면 됩니다.
+
+새 노드는 `Basic`으로 시작합니다. 노드의 `추적 설정 · 기본` 버튼을 누르면 수집 팝업이 열리고, 여기서 `Advanced`를 선택하면 선택값이 워크플로에 저장되어 다음 큐 실행부터 적용됩니다. 배선 화면에는 현재 수집 수준만 짧게 표시하고 상세 설명은 팝업으로 분리했습니다.
+
+여러 이미지 배치는 노드를 추가하지 않아도 자동으로 개별 수집됩니다. 예를 들어 배치 크기가 4이면 같은 샘플러 구간 안에 네 장의 x/x0 요약과 노이즈 제거 미리보기 흐름을 따로 저장합니다. 미리보기 위의 `1/4` 배치 선택기로 같은 스텝의 각 이미지를 전환해 확인할 수 있습니다. Basic은 가벼운 형태·장치 요약을, Advanced는 배치 항목별 Tensor 통계까지 기록합니다. 개별 배치 수집 기능 이전에 만든 실행은 첫 이미지 기록을 유지하고, 나머지 배치 버튼은 워크플로를 다시 실행할 때까지 비활성 상태와 이유를 표시합니다.
+
+원본 CLIP을 수정하지 않는 프록시(proxy)가 실제 `tokenize()` 반환값을 그대로 통과시킨 뒤 호출 노드·원문·CLIP-L/G token ID·입력 가중치·단어 묶음을 같은 Run에 기록합니다. 일반 노드 검색에는 `Sampling Trace · One Node Setup` 하나만 노출합니다. 나머지 9개 클래스는 저장된 워크플로 호환과 내부·고급 진단 능력을 위해 등록은 유지하되 사용 중단 예정(Deprecated)으로 숨깁니다. 보고서는 실행 완료 시 자동 마무리되고 메모는 하단 패널에서 관리하므로 별도 내보내기·메모 노드는 공개 워크플로 표면에 두지 않습니다.
 
 ### `Sampling Trace Model`을 마지막 MODEL patch 뒤에 두는 이유
 
@@ -183,7 +179,7 @@ Sampling Trace Note
 | **Basic** | Step, Preview, shape/dtype/device, 노드 Timeline | 낮음 | 전체 흐름 확인 |
 | **Advanced** | Basic + CFG delta + Control 구조. `persist_tensor_stats=true`이면 x/x0·CFG 상세·Control residual과 샘플러 positive/negative 조건의 단계별 단어 주의까지 캡처 | 중간~높음 | 일반 튜닝 및 ControlNet/프롬프트/커스텀 노드 R&D |
 
-처음에는 `Basic`, 내부 영향량을 볼 때는 `Advanced`를 권장합니다. 고비용 Tensor 통계가 필요 없으면 `persist_tensor_stats=false`로 끌 수 있습니다. 이전 workflow의 `Deep` 값은 `Advanced`로 자동 호환됩니다.
+처음에는 `Basic`, 내부 영향량을 볼 때는 `Advanced`를 권장합니다. 단일 노드 팝업에서 `Advanced`를 선택하면 전체 내부 신호를 위한 고비용 Tensor 통계가 함께 켜집니다. 전문가용 분리 연결에서는 사용 중단 예정인 `Sampling Trace Model` 노드의 `persist_tensor_stats`를 별도로 조절할 수 있습니다. 이전 workflow의 `Deep` 값은 `Advanced`로 자동 호환됩니다.
 
 ---
 
@@ -318,6 +314,8 @@ ComfyUI/user/trace_inspector/runs/<run_id>/
 
 ## 10. Probe 노드
 
+형식별 통과형 프로브(typed passthrough probe)는 일반 노드 검색에서 숨깁니다. 기존 워크플로 호환과 임의의 IMAGE·LATENT·MASK·CONDITIONING·MODEL 중간 지점을 살펴봐야 하는 내부·고급 진단용으로 등록만 유지합니다.
+
 ### Sampling Trace Image
 IMAGE (이미지)의 shape, 범위, 평균, 표준편차를 기록하고 그대로 통과시킵니다.
 
@@ -330,7 +328,7 @@ CONDITIONING (생성 조건 정보)의 Tensor 구조와 metadata key를 요약�
 ### Sampling Trace Model Snapshot
 MODEL의 weight patch 수, transformer patch 종류, wrapper/callback 수를 기록합니다.
 
-Probe는 원본 데이터를 변경하지 않는 passthrough 노드입니다.
+Probe는 원본 데이터를 변경하지 않는 passthrough 노드이며, 새 워크플로의 기본 사용에는 필요하지 않습니다.
 
 ---
 

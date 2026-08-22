@@ -72,6 +72,34 @@ def _sampler_name(sampler: Any) -> str:
     return f"{type(sampler).__module__}.{type(sampler).__name__}"
 
 
+def _tensor_batch_size(value: Any) -> int:
+    """Return a stable batch size for ordinary and nested ComfyUI latents."""
+    if getattr(value, "is_nested", False):
+        tensors = getattr(value, "tensors", None)
+        if tensors:
+            return max(1, len(tensors))
+    shape = getattr(value, "shape", None)
+    if shape is None or len(shape) == 0:
+        return 1
+    try:
+        return max(1, int(shape[0]))
+    except (TypeError, ValueError, IndexError):
+        return 1
+
+
+def _tensor_batch_item(value: Any, batch_index: int) -> Any:
+    """Keep a leading batch dimension so ComfyUI previewers remain compatible."""
+    if getattr(value, "is_nested", False):
+        tensors = getattr(value, "tensors", None)
+        if tensors and 0 <= batch_index < len(tensors):
+            tensor = tensors[batch_index]
+            return tensor.unsqueeze(0) if hasattr(tensor, "unsqueeze") else tensor
+    try:
+        return value[batch_index : batch_index + 1]
+    except Exception:
+        return value
+
+
 def _aggregate_cfg(events: list[dict[str, Any]]) -> dict[str, Any]:
     if not events:
         return {"eventCount": 0}
@@ -170,7 +198,7 @@ class TraceSession:
         self._pending_cfg: list[dict[str, Any]] = []
         self._pending_control: list[dict[str, Any]] = []
         self._pending_prompt_attention: list[dict[str, Any]] = []
-        self._previous_preview_thumb: Image.Image | None = None
+        self._previous_preview_thumbs: dict[int, Image.Image] = {}
         self._last_control_stats_sigma: float | None = None
         self._finalized = False
         self._sampling_started_monotonic: float | None = None
@@ -297,13 +325,14 @@ class TraceSession:
                 "sigmas": sigma_values,
                 "noise": tensor_summary(noise, include_statistics=False),
                 "latentInput": tensor_summary(latent_image, include_statistics=False),
+                "batchSize": _tensor_batch_size(latent_image),
             }
             self.segments.append(segment)
             self._current_segment_index = segment_index
             self._pending_cfg.clear()
             self._pending_control.clear()
             self._pending_prompt_attention.clear()
-            self._previous_preview_thumb = None
+            self._previous_preview_thumbs.clear()
             self._last_control_stats_sigma = None
             self._sampling_started_monotonic = time.perf_counter()
             STORE.persist_run(self.to_run_payload())
@@ -497,14 +526,45 @@ class TraceSession:
             "promptInfluence": aggregate_attention_events(prompt_attention_events),
         }
 
+        batch_size = max(_tensor_batch_size(x), _tensor_batch_size(x0))
+        batch_items: list[dict[str, Any]] = []
+        for batch_index in range(batch_size):
+            batch_x = _tensor_batch_item(x, batch_index)
+            batch_x0 = _tensor_batch_item(x0, batch_index)
+            batch_items.append(
+                {
+                    "batchIndex": batch_index,
+                    "x": tensor_summary(
+                        batch_x,
+                        include_statistics=include_statistics,
+                        max_samples=self.options.max_tensor_samples,
+                    ),
+                    "x0": tensor_summary(
+                        batch_x0,
+                        include_statistics=include_statistics,
+                        max_samples=self.options.max_tensor_samples,
+                    ),
+                }
+            )
+        record["batchSize"] = batch_size
+        record["batchItems"] = batch_items
+
         should_preview = self.options.persist_previews and (
             step % self.options.preview_every == 0 or step + 1 >= total_steps
         )
         if should_preview:
-            image = decode_preview(previewer, x0, self.options.preview_max_side)
-            if image is not None:
+            for batch_item in batch_items:
+                batch_index = batch_item["batchIndex"]
+                batch_x0 = _tensor_batch_item(x0, batch_index)
+                image = decode_preview(previewer, batch_x0, self.options.preview_max_side)
+                if image is None:
+                    continue
                 extension = "png" if self.options.preview_format == "PNG" else "jpg"
-                filename = f"segment_{segment_index:02d}_step_{int(step):04d}.{extension}"
+                filename = (
+                    f"segment_{segment_index:02d}_step_{int(step):04d}.{extension}"
+                    if batch_index == 0
+                    else f"segment_{segment_index:02d}_batch_{batch_index:03d}_step_{int(step):04d}.{extension}"
+                )
                 path = STORE.artifact_directory(self.run_id) / filename
                 save_preview(
                     image,
@@ -512,11 +572,19 @@ class TraceSession:
                     image_format=self.options.preview_format,
                     quality=self.options.preview_quality,
                 )
-                record["previewFile"] = filename
-                record["previewUrl"] = f"/trace-inspector/runs/{self.run_id}/artifact/{filename}"
-                record["previewSize"] = [image.width, image.height]
-                record["previewChange"] = preview_difference(self._previous_preview_thumb, image)
-                self._previous_preview_thumb = preview_thumbnail(image)
+                batch_item["previewFile"] = filename
+                batch_item["previewUrl"] = f"/trace-inspector/runs/{self.run_id}/artifact/{filename}"
+                batch_item["previewSize"] = [image.width, image.height]
+                batch_item["previewChange"] = preview_difference(
+                    self._previous_preview_thumbs.get(batch_index),
+                    image,
+                )
+                self._previous_preview_thumbs[batch_index] = preview_thumbnail(image)
+
+            if batch_items and batch_items[0].get("previewFile"):
+                # Preserve the v1 top-level preview contract for old reports and clients.
+                for key in ("previewFile", "previewUrl", "previewSize", "previewChange"):
+                    record[key] = batch_items[0].get(key)
 
         with self._lock:
             self.step_count += 1

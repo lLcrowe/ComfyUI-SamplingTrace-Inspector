@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.4.0b3 — One-node batch trace — 2026-08-23
+
+- Added the zero-configuration `Sampling Trace · One Node Setup`, which exposes only final MODEL and Checkpoint CLIP sockets while applying recommended advanced trace settings internally. It records MODEL sampling and actual positive/negative CLIP tokenization in one Run without a separate `prompt_trace` wire. Existing split MODEL/CLIP nodes remain workflow-compatible.
+- Kept only `Sampling Trace · One Node Setup` visible in normal node search. The other nine classes are deprecated and hidden without removing their mappings, preserving saved-workflow compatibility and internal typed diagnostics. Run completion owns report finalization and the bottom panel owns Notes, so separate Export and Note nodes are no longer part of the public workflow surface.
+- Added a workflow-persisted Basic/Advanced capture popup to the one-node setup. The node now starts in Basic mode, shows the active level on a compact settings button, and enables high-cost tensor statistics only when Advanced is selected.
+- Added automatic per-item batch tracing. Multi-image sampler batches now persist separate x/x0 summaries, decoded step previews, and visual-change histories for every batch index while retaining the legacy first-item fields for compatibility. The trace panel exposes a direct `1/N` selector, and older runs show unavailable batch items as disabled until the workflow is run again.
+
 ## 0.4.0b2 — Public preview
 
 - Published the source repository for public preview without claiming 1.0 or external clean-install validation.

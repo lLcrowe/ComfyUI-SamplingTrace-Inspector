@@ -4,7 +4,7 @@
   overflow: hidden;
 }
 
-.cti-root {
+:where(.cti-root, .cti-one-node-settings) {
   --cti-bg: color-mix(in srgb, var(--comfy-menu-bg, #202020) 88%, #080a0c);
   --cti-panel: color-mix(in srgb, var(--comfy-menu-bg, #202020) 96%, #111820);
   --cti-panel-raised: color-mix(in srgb, var(--comfy-input-bg, #303030) 78%, #111820);
@@ -26,13 +26,128 @@
   --cti-prompt-negative: #d37b7b;
   --cti-prompt-negative-soft: color-mix(in srgb, var(--cti-prompt-negative) 14%, transparent);
   --cti-overlay: rgba(0, 0, 0, 0.72);
+  color: var(--cti-text);
+  background: var(--cti-bg);
+  font: 12px/1.4 system-ui, sans-serif;
+}
+
+.cti-root {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
+}
+
+.cti-one-node-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.cti-one-node-settings {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  border: 1px solid var(--cti-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+.cti-one-node-settings-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 18px 13px;
+  border-bottom: 1px solid var(--cti-border);
+  background: var(--cti-panel);
+}
+
+.cti-one-node-settings-heading { min-width: 0; flex: 1; }
+.cti-one-node-settings-title { margin: 0; font-size: 16px; line-height: 1.25; }
+.cti-one-node-settings-subtitle { margin: 5px 0 0; color: var(--cti-muted); }
+.cti-one-node-settings-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--cti-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cti-one-node-settings-close:hover,
+.cti-one-node-settings-close:focus-visible {
+  border-color: var(--cti-border-strong);
   color: var(--cti-text);
-  background: var(--cti-bg);
-  font: 12px/1.4 system-ui, sans-serif;
+  background: var(--cti-panel-raised);
+  outline: none;
+}
+
+.cti-one-node-settings-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.cti-one-node-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-height: 150px;
+  padding: 14px;
+  border: 1px solid var(--cti-border-strong);
+  border-radius: 6px;
+  color: var(--cti-text);
+  background: var(--cti-panel-raised);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.cti-one-node-preset:hover,
+.cti-one-node-preset:focus-visible {
+  border-color: var(--cti-accent);
+  background: var(--cti-accent-soft);
+  outline: none;
+}
+.cti-one-node-preset[aria-pressed="true"] {
+  border-color: var(--cti-accent);
+  box-shadow: inset 0 0 0 1px var(--cti-accent);
+}
+.cti-one-node-preset-title { font-size: 14px; font-weight: 700; }
+.cti-one-node-preset-description { flex: 1; color: var(--cti-text); }
+.cti-one-node-preset-detail { color: var(--cti-muted); font-size: 11px; }
+.cti-one-node-batch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 18px 16px;
+  padding: 11px 12px;
+  border: 1px solid var(--cti-border);
+  border-left: 2px solid var(--cti-success);
+  border-radius: 4px;
+  background: var(--cti-panel-raised);
+}
+.cti-one-node-batch-title { color: var(--cti-output); }
+.cti-one-node-batch-description { color: var(--cti-muted); font-size: 11px; }
+.cti-one-node-settings-footer {
+  margin: 0;
+  padding: 10px 18px 13px;
+  border-top: 1px solid var(--cti-border);
+  color: var(--cti-muted);
+  background: var(--cti-panel);
+}
+
+@media (max-width: 620px) {
+  .cti-one-node-settings-options { grid-template-columns: 1fr; }
+  .cti-one-node-preset { min-height: 0; }
 }
 
 .cti-root.is-expanded {
@@ -99,6 +214,40 @@
 .cti-section-header > .cti-heading-group:first-child { margin-right: auto; }
 .cti-heading-group { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cti-zone-label { margin-bottom: 6px; color: var(--cti-muted); font-size: 9px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.cti-batch-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--cti-border);
+  border-left: 2px solid var(--cti-accent);
+  background: var(--cti-panel);
+}
+.cti-batch-identity { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 1px; }
+.cti-batch-identity > span { color: var(--cti-muted); font-size: 10px; }
+.cti-batch-choices { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.cti-batch-choice {
+  min-width: 42px;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 1px solid var(--cti-border-strong);
+  border-radius: 3px;
+  color: var(--cti-text);
+  background: var(--cti-panel-raised);
+  font: 10px/1.2 ui-monospace, monospace;
+  cursor: pointer;
+}
+.cti-batch-choice:hover,
+.cti-batch-choice:focus-visible { border-color: var(--cti-accent); outline: none; }
+.cti-batch-choice.selected {
+  border-color: var(--cti-accent);
+  color: var(--cti-output);
+  background: var(--cti-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--cti-accent);
+}
+.cti-batch-choice:disabled { color: var(--cti-faint); background: var(--cti-bg); cursor: not-allowed; }
 
 .cti-run-list { display: flex; flex-direction: column; gap: 3px; }
 .cti-run-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 6px; width: 100%; padding: 7px; text-align: left; color: inherit; background: transparent; border: 1px solid transparent; border-left: 2px solid transparent; border-radius: 2px; cursor: pointer; }
@@ -255,6 +404,8 @@
 @media (max-width: 760px) {
   .cti-body { grid-template-columns: 1fr; }
   .cti-run-list { max-height: 150px; }
+  .cti-batch-selector { align-items: stretch; flex-direction: column; }
+  .cti-batch-choices { justify-content: flex-start; }
   .cti-visual-workspace, .cti-right { grid-template-columns: 1fr; }
   .cti-step-insight { border-left: 0; border-top: 1px solid var(--cti-border); }
   .cti-influence-cards { grid-template-columns: 1fr; }

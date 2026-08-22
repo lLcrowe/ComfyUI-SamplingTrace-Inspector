@@ -2,7 +2,16 @@
 
 ## 판정
 
-현재 패키지는 **0.4.0b2 공개 미리보기(public preview)**입니다. 독립 정적 검사와 기존 로컬 ComfyUI의 주요 기능 경로에 더해, 저장소 복제본을 별도 ComfyUI root·사용자·출력·포트에서 내부 수용 테스트했습니다. 이 결과는 현재 머신의 공개 미리보기 근거이며, 외부 새 설치(clean install)나 공개 베타 완료·1.0을 뜻하지 않습니다.
+현재 패키지는 **0.4.0b3 공개 미리보기(public preview)**입니다. 독립 정적 검사와 기존 로컬 ComfyUI의 주요 기능 경로에 더해, 저장소 복제본을 별도 ComfyUI root·사용자·출력·포트에서 내부 수용 테스트했습니다. 이 결과는 현재 머신의 공개 미리보기 근거이며, 외부 새 설치(clean install)나 공개 베타 완료·1.0을 뜻하지 않습니다.
+
+### 2026-08-23 단일 노드·배치 추적 검증
+
+- 새 워크플로의 공개 진입점을 MODEL·CLIP을 받는 단일 노드 하나로 축소하고, 기존 9개 클래스는 저장 워크플로 호환을 유지한 채 사용 중단 예정(Deprecated)으로 숨김
+- 단일 노드의 Basic/Advanced 팝업 설정이 워크플로에 직렬화되고 다음 실행에 적용되는 경로 확인
+- 한 Run·sampler segment 안에서 여러 이미지 배치의 x/x0 요약·단계별 Preview·Preview change를 항목별로 독립 저장
+- 이전 형식의 다중 배치 Run은 latent shape로 배치 수를 복원하고 미수집 항목을 비활성 상태로 설명하는 호환 UI 확인
+- ComfyUI embedded Python 전체 pytest `76`개, Python/JavaScript 정적 검사, JavaScript 문법 검사, 공개 파일 SHA-256 `89/89`, `git diff --check` 통과
+- 외부 Chrome에서 단일 노드 팝업과 기존 4-batch Run의 `1/4` 호환 UI를 확인하고, 이후 사용자가 실제 다중 배치의 `1/N` 개별 추적 동작을 최종 확인
 
 ### 2026-08-19 공개 전환 검증
 

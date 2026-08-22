@@ -4,7 +4,7 @@
 
 Inspect how a ComfyUI image forms over time: execution flow, sampling steps, latent state, predicted x0, sigma, CFG behavior, ControlNet residuals, model patches, and prompt-word attention in one panel.
 
-> Current status: **0.4.0b2 public preview**. The package has passed internal acceptance in a separate ComfyUI, user, input, output, and temporary environment. A clean installation outside the development machine and a first external user's Quick Start remain unverified. See `docs/LOCAL_VALIDATION.md` and `docs/BUILD_VALIDATION.md`.
+> Current status: **0.4.0b3 public preview**. The package has passed internal acceptance in a separate ComfyUI, user, input, output, and temporary environment. A clean installation outside the development machine and a first external user's Quick Start remain unverified. See `docs/LOCAL_VALIDATION.md` and `docs/BUILD_VALIDATION.md`.
 
 ---
 
@@ -127,21 +127,13 @@ python scripts/static_check.py
 
 3. Restart ComfyUI.
 
-4. Search for these nodes:
+4. Search for the recommended setup node:
 
 ```text
-Sampling Trace CLIP · Connect Both Prompts
-Sampling Trace Model
-Sampling Trace Export / Finalize
-Sampling Trace Note
-Sampling Trace Image
-Sampling Trace Latent
-Sampling Trace Mask
-Sampling Trace Conditioning
-Sampling Trace Model Snapshot
+Sampling Trace · One Node Setup
 ```
 
-5. Connect `Sampling Trace Model` after the final MODEL patch and before the first sampler.
+5. Add `Sampling Trace · One Node Setup` after the final MODEL patch. It intentionally exposes only MODEL and CLIP sockets. Use its compact `Trace settings` button to open a popup and choose `Basic` (default) or `Advanced`, then connect MODEL to the first sampler and fan CLIP out to both Text Encode nodes.
 
 6. Open the `Sampling Trace Inspector` bottom panel.
 
@@ -151,24 +143,26 @@ Sampling Trace Model Snapshot
 
 ```text
 [Checkpoint Loader]
-  ① CLIP ──→ [Sampling Trace CLIP · Connect Both Prompts]
-                   ② CLIP ──┬──→ Positive Text Encode
-                            └──→ Negative Text Encode
-                   ③ Send CLIP Prompt Trace ─────────────┐
-       MODEL                                             │
-         ↓                                               │
+  CLIP ───────────────────────────────────────────┐
+       MODEL                                      │
+         ↓                                        │
 [LoRA Loader]                                             │
          ↓                                               │
 [IPAdapter Advanced]                                      │
          ↓                                               │
-[Sampling Trace Model] ←──────────────────────────────────┘
-    MODEL ↓       └── TRACE_SESSION ──→ [Export / Finalize] (optional)
-[KSampler]
+[Sampling Trace · One Node Setup] ←───────────────────────┘
+    MODEL ──→ [KSampler]
+    CLIP  ──┬──→ Positive Text Encode
+            └──→ Negative Text Encode
 ```
 
-Connect the CLIP output from `Sampling Trace CLIP` to both positive and negative Text Encode nodes. Connect its `③ Send CLIP Prompt Trace` output to `③ Receive CLIP Prompt Trace` on `Sampling Trace Model`.
+This is the recommended setup: one physical trace node creates one Run for the final MODEL and the actual CLIP `tokenize()` calls. No `prompt_trace` wire is needed. Place the node after the last MODEL patch, then connect its CLIP output to both positive and negative Text Encode nodes.
 
-The CLIP proxy forwards the original `tokenize()` result unchanged and records the calling node, prompt text, CLIP-L/G token IDs, input weights, and readable word groups in the same run. The legacy `clip` input on `Sampling Trace Model` remains only for compatibility with older workflows; do not use it for new connections.
+The node starts in `Basic` mode. Click `Trace settings · Basic` on the node to open the capture popup; selecting `Advanced` stores that choice with the workflow and applies it to the next queued run. The popup keeps capture depth out of the wiring surface while making the active level visible on the node.
+
+Multi-image batches are captured automatically without adding another node. For example, a batch size of four stores four independent x/x0 summaries and denoise preview histories inside the same sampler segment. Use the `1/4` batch selector above the denoise preview to inspect each image at the same step. Basic keeps lightweight shape/device summaries; Advanced adds per-item tensor statistics. Runs created before per-item batch capture keep their first-image preview and show the other batch buttons disabled until the workflow is run again.
+
+The CLIP proxy forwards the original `tokenize()` result unchanged and records the calling node, prompt text, CLIP-L/G token IDs, input weights, and readable word groups in the same run. Normal node search exposes only `Sampling Trace · One Node Setup`. The other nine classes remain registered but deprecated and hidden so saved workflows still load and internal or advanced diagnostics remain possible. Run completion automatically finalizes reports, and Notes are managed in the bottom panel, so separate Export and Note nodes are not part of the public workflow surface.
 
 ### Why the trace node comes after the last MODEL patch
 
@@ -185,7 +179,7 @@ The CLIP proxy forwards the original `tokenize()` result unchanged and records t
 | **Basic** | Steps, previews, shape/dtype/device, node timeline | Low | Follow the overall generation flow |
 | **Advanced** | Basic plus CFG delta and Control structure. With `persist_tensor_stats=true`, also captures x/x0 details, Control residuals, and step-level positive/negative prompt-word attention | Medium to high | Tuning and ControlNet, prompt, or custom-node research |
 
-Start with `Basic`. Use `Advanced` when internal signals are necessary. Set `persist_tensor_stats=false` when the high-cost tensor statistics are not needed. Legacy workflow values using `Deep` are automatically treated as `Advanced`.
+Start with `Basic`. In the one-node popup, `Advanced` enables the high-cost tensor statistics needed for the full internal-signal view. Expert split wiring can still use the deprecated `Sampling Trace Model` node to control `persist_tensor_stats` separately. Legacy workflow values using `Deep` are automatically treated as `Advanced`.
 
 ---
 
@@ -328,6 +322,8 @@ If `folder_paths.get_user_directory()` is unavailable, storage falls back to `da
 
 ## 10. Probe nodes
 
+These typed passthrough probes are hidden from normal node search. They remain registered for saved-workflow compatibility and internal or advanced diagnostics where an arbitrary IMAGE, LATENT, MASK, CONDITIONING, or MODEL branch must be inspected.
+
 | Node | What it records | Passthrough |
 |---|---|---|
 | `Sampling Trace Image` | IMAGE shape, range, mean, and standard deviation | IMAGE unchanged |
@@ -336,7 +332,7 @@ If `folder_paths.get_user_directory()` is unavailable, storage falls back to `da
 | `Sampling Trace Conditioning` | CONDITIONING tensors and metadata keys | CONDITIONING unchanged |
 | `Sampling Trace Model Snapshot` | MODEL patch count, transformer patch types, wrappers, and callbacks | MODEL unchanged |
 
-Probe nodes do not start sampling trace by themselves. Connect `Sampling Trace Model` before the sampler to create a traced run.
+Probe nodes do not start sampling trace by themselves. Existing advanced workflows can connect the deprecated `Sampling Trace Model` before the sampler to create a traced run.
 
 ---
 
