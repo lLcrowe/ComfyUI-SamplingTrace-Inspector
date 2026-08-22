@@ -8,6 +8,8 @@ Inspect how a ComfyUI image forms over time: execution flow, sampling steps, lat
 
 ---
 
+![Sampling Trace Inspector in action](docs/images/sampling-trace-inspector-preview.png)
+
 ## 1. Why this exists
 
 A typical debugging loop looks like this:
